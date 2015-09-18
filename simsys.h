@@ -43,10 +43,6 @@
 #define SIM_MOUSE_WHEELUP           8 //2003-11-04 hsiegeln added
 #define SIM_MOUSE_WHEELDOWN         9 //2003-11-04 hsiegeln added
 
-#define SIM_SYSTEM_QUIT             1
-#define SIM_SYSTEM_RESIZE             2
-#define SIM_SYSTEM_UPDATE           3
-
 /* Globale Variablen zur Messagebearbeitung */
 
 struct sys_event
@@ -88,10 +84,19 @@ const char *dr_get_locale_string();
 
 void dr_mkdir(char const* path);
 
+// accecpt whatever encoding your filename has (assuming ANSI for windows) and returns the Unicode name
+const char *dr_system_filename_to_uft8( const char *path_in );
+
+// accecpt utf8 and returns (on windows) an ANSI filename
+const char *dr_utf8_to_system_filename( const char *path_in_utf8, bool create=false );
+
+// rename a file and delete eventually existing file new_utf8
+void dr_rename( const char *existing_utf8, const char *new_utf8 );
+
 /* query home directory */
 char const* dr_query_homedir();
 
-unsigned short* dr_textur_init(void);
+unsigned short* dr_textur_init();
 
 
 void dr_textur(int xp, int yp, int w, int h);
@@ -101,7 +106,7 @@ int dr_textur_resize(unsigned short** textur, int w, int h);
 
 // needed for screen update
 void dr_prepare_flush();	// waits, if previous update not yet finished
-void dr_flush(void);	// copy to screen (eventuall multithreaded)
+void dr_flush();	// copy to screen (eventuall multithreaded)
 
 /**
  * Transform a 24 bit RGB color into the system format.
@@ -116,12 +121,12 @@ void set_pointer(int loading);
 
 void move_pointer(int x, int y);
 
-void ex_ord_update_mx_my(void);
+void ex_ord_update_mx_my();
 
-void GetEvents(void);
-void GetEventsNoWait(void);
+void GetEvents();
+void GetEventsNoWait();
 
-unsigned long dr_time(void);
+uint32 dr_time();
 void dr_sleep(uint32 millisec);
 
 // error message in case of fatal events

@@ -236,6 +236,8 @@ private:
 	uint16 electric_amount;
 	uint16 pax_demand; // Kept for backwards compatibility only. This is now read from the associated gebaeude_t object.
 	uint16 mail_demand; // Kept for backwards compatibility only. This is now read from the associated gebaeude_t object.
+	uint16 base_max_distance_to_consumer;
+	uint16 max_distance_to_consumer;
 
 public:
 	/*
@@ -301,6 +303,19 @@ public:
 	uint16 get_electric_amount() const { return electric_amount; }
 	uint16 get_pax_demand() const { return pax_demand; }
 	uint16 get_mail_demand() const { return mail_demand; }
+	
+	uint16 get_max_distance_to_consumer() const { return max_distance_to_consumer; }
+
+	void set_scale(uint16 scale_factor)
+	{
+		if(base_max_distance_to_consumer < 65535)
+		{
+			uint32 mdc = (uint32)max_distance_to_consumer;
+			mdc *= 1000;
+			mdc /= scale_factor;
+			max_distance_to_consumer = (uint16)mdc;
+		}
+	}
 
 	void calc_checksum(checksum_t *chk) const;
 };

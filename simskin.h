@@ -1,6 +1,18 @@
 #ifndef __SIMSKIN_H
 #define __SIMSKIN_H
 
+#include "simcolor.h"
+
+// Max Kielland
+// Classic helper macro to transform a #define value into a "string"
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+// For test purposes themes can be disabled or an alternative theme.tab file can be used.
+//  -1 = No theme, use internal fallback
+//   0 = Normal use, read theme.tab
+// n>0 = Use alternative file named theme_n.tab
+
 template<class T> class slist_tpl;
 class skin_besch_t;
 
@@ -13,20 +25,31 @@ public:
 	/// @{
 
 	/// icon images for advanced tools (everything that involves clicking on the map)
-	static const skin_besch_t *werkzeuge_general;
+	static const skin_besch_t *tool_icons_general;
 	/// icon images for simple tools (eg pause, fast forward)
-	static const skin_besch_t *werkzeuge_simple;
+	static const skin_besch_t *tool_icons_simple;
 	/// icon images for GUI tools (which open windows)
-	static const skin_besch_t *werkzeuge_dialoge;
+	static const skin_besch_t *tool_icons_dialoge;
 	/// icon images for toolbars
-	static const skin_besch_t *werkzeuge_toolbars;
+	static const skin_besch_t *tool_icons_toolbars;
+	/// icon to skin toolbar background
+	static const skin_besch_t *toolbar_background;
 	/// @}
 
 	/**
-	 * Window skin images (menus too!)
-	 * @author Hj. Malthaner
+	 * Different GUI elements
+	 * @author prissi
 	 */
-	static const skin_besch_t *window_skin;
+	static const skin_besch_t* button;
+	static const skin_besch_t* round_button;
+	static const skin_besch_t* check_button;
+	static const skin_besch_t* posbutton;
+	static const skin_besch_t* back;
+	static const skin_besch_t* scrollbar;
+	static const skin_besch_t* divider;
+	static const skin_besch_t* editfield;
+	static const skin_besch_t* listbox;
+	static const skin_besch_t* gadget;
 
 	/// @name pictures used in the GUI
 	/// @{

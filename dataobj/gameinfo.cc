@@ -7,12 +7,12 @@
  */
 
 #include "gameinfo.h"
-#include "network.h"
-#include "network_socket_list.h"
-#include "einstellungen.h"
+#include "../network/network.h"
+#include "../network/network_socket_list.h"
+#include "settings.h"
 #include "translator.h"
-#include "umgebung.h"
-#include "../simtools.h"
+#include "environment.h"
+#include "../utils/simrandom.h"
 #include "../simdebug.h"
 #include "../simworld.h"
 #include "../simcity.h"
@@ -22,7 +22,7 @@
 #include "../gui/karte.h"
 #include "../utils/simstring.h"
 #include "loadsave.h"
-#include "pakset_info.h"
+#include "../network/pakset_info.h"
 #include "../simversion.h"
 
 
@@ -35,8 +35,8 @@ gameinfo_t::gameinfo_t(karte_t *welt) :
 	file_name(""),
 	pak_name("")
 {
-	groesse_x = welt->get_size().x;
-	groesse_y = welt->get_size().y;
+	size_x = welt->get_size().x;
+	size_y = welt->get_size().y;
 
 	// create a minimap
 
@@ -65,11 +65,11 @@ gameinfo_t::gameinfo_t(karte_t *welt) :
 	convoi_count = welt->convoys().get_count();
 
 	for(  int i=0;  i<MAX_PLAYER_COUNT;  i++ ) {
-		spieler_type[i] = spieler_t::EMPTY;
-		if(  spieler_t *sp = welt->get_spieler(i)  ) {
-			spieler_type[i] = sp->get_ai_id();
-			if(  !sp->access_password_hash().empty()  ) {
-				spieler_type[i] |= spieler_t::PASSWORD_PROTECTED;
+		player_type[i] = player_t::EMPTY;
+		if(  player_t *player = welt->get_player(i)  ) {
+			player_type[i] = player->get_ai_id();
+			if(  !player->access_password_hash().empty()  ) {
+				player_type[i] |= player_t::PASSWORD_PROTECTED;
 			}
 		}
 	}
@@ -86,7 +86,7 @@ gameinfo_t::gameinfo_t(karte_t *welt) :
 	bits_per_month = s.get_bits_per_month();
 
 	// names of the stations ...
-	memcpy(language_code_names, translator::get_langs()[s.get_name_language_id()].iso, lengthof(language_code_names));
+	strncpy(language_code_names, translator::get_langs()[s.get_name_language_id()].iso, lengthof(language_code_names));
 
 	// will contain server-IP/name for network games
 	file_name = s.get_filename();
@@ -99,7 +99,7 @@ gameinfo_t::gameinfo_t(karte_t *welt) :
 	}
 	else {
 		// construct from pak name
-		pak_name = umgebung_t::objfilename;
+		pak_name = env_t::objfilename;
 		pak_name.erase( pak_name.length()-1 );
 	}
 
@@ -126,8 +126,8 @@ void gameinfo_t::rdwr(loadsave_t *file)
 {
 	xml_tag_t e( file, "gameinfo_t" );
 
-	file->rdwr_long( groesse_x );
-	file->rdwr_long( groesse_y );
+	file->rdwr_long( size_x );
+	file->rdwr_long( size_y );
 	for( int y=0;  y<MINIMAP_SIZE;  y++  ) {
 		for( int x=0;  x<MINIMAP_SIZE;  x++  ) {
 			file->rdwr_byte( map.at(x,y) );
@@ -176,7 +176,7 @@ void gameinfo_t::rdwr(loadsave_t *file)
 	file->rdwr_long( game_engine_revision );
 
 	for(  int i=0;  i<16;  i++  ) {
-		file->rdwr_byte( spieler_type[i] );
+		file->rdwr_byte( player_type[i] );
 	}
 	file->rdwr_byte( clients );
 

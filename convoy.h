@@ -63,16 +63,14 @@ a = (Fm - Frs - cf * v^2) / m
 
 #include <limits>
 #include <math.h>
+
 #include "utils/float32e8_t.h"
 #include "simunits.h"
 #include "tpl/vector_tpl.h"
 #include "besch/vehikel_besch.h"
 #include "simtypes.h"
-//#include "vehicle/simvehikel.h"
-//#include "simconvoi.h"
-#include "simworld.h"
 
-class vehikel_t;
+class vehicle_t;
 
 //// CF_*: constants related to air resistance
 //
@@ -154,8 +152,8 @@ struct adverse_summary_t
 		max_speed = KMH_SPEED_UNLIMITED; 
 	}
 
-	void add_vehicle(const vehikel_t &v);
-	void add_vehicle(const vehikel_besch_t &b, bool is_first);
+	void add_vehicle(const vehicle_t &v);
+	void add_vehicle(const vehikel_besch_t &b, bool is_leading);
 };
 
 /******************************************************************************/
@@ -205,7 +203,7 @@ struct weight_summary_t
 	 */
 	void add_weight(sint32 kgs, sint32 sin_alpha);
 
-	void add_vehicle(const vehikel_t &v);
+	void add_vehicle(const vehicle_t &v);
 };
 
 /******************************************************************************/
@@ -232,7 +230,7 @@ private:
 		return min(get_force(v), adverse.cf * v * v + Frs); /* in N */
 	}
 protected:
-	vehicle_summary_t vehicle;
+	vehicle_summary_t vehicle_summary;
 	adverse_summary_t adverse;
 
 	/**
@@ -254,7 +252,7 @@ protected:
 	 * get vehicle summary
 	 */
 	virtual const vehicle_summary_t &get_vehicle_summary() {
-		return vehicle;
+		return vehicle_summary;
 	}
 
 	/**
@@ -271,7 +269,8 @@ protected:
 	 */
 	inline float32e8_t power_index_to_power(const sint64 &power_index, sint32 power_factor)
 	{
-		return float32e8_t(power_index * (power_factor * 10), (sint64) GEAR_FACTOR);
+		static const float32e8_t factor = float32e8_t(10) / float32e8_t(GEAR_FACTOR);
+		return float32e8_t(power_index * power_factor) * factor;
 	}
 public:
 	/**
@@ -292,8 +291,14 @@ public:
 	/*
 	 * get continuous power in W
 	 */
-	virtual float32e8_t get_continuous_power() { 
+	virtual float32e8_t get_continuous_power() 
+	{ 
+#ifndef NETTOOL
 		return get_power_summary(get_vehicle_summary().max_speed * kmh2ms); 
+
+#else
+		return get_power_summary(get_vehicle_summary().max_speed);
+#endif
 	}
 
 	/**
@@ -331,7 +336,7 @@ public:
 	/**
 	 * Get the minimum braking distance in steps for the convoy with given weight summary at given simutrans speed.
 	 */
-	sint32 calc_min_braking_distance(const settings_t &settings, const weight_summary_t &weight, sint32 speed);
+	sint32 calc_min_braking_distance(const class settings_t &settings, const weight_summary_t &weight, sint32 speed);
 
 	/** 
 	 * Calculate the movement within delta_t
@@ -345,7 +350,7 @@ public:
 	 * @param akt_speed the current speed and returns the new speed after delta_t has gone in simutrans speed.
 	 * @param sp_soll the number of simutrans yards still to go and returns the new number of simutrans yards to go.
 	 */
-	void calc_move(const settings_t &settings, long delta_t, const weight_summary_t &weight, sint32 akt_speed_soll, sint32 next_speed_limit, sint32 steps_til_limit, sint32 steps_til_brake, sint32 &akt_speed, sint32 &sp_soll, float32e8_t &akt_v);
+	void calc_move(const class settings_t &settings, long delta_t, const weight_summary_t &weight, sint32 akt_speed_soll, sint32 next_speed_limit, sint32 steps_til_limit, sint32 steps_til_brake, sint32 &akt_speed, sint32 &sp_soll, float32e8_t &akt_v);
 	virtual ~convoy_t(){}
 };
 
@@ -390,7 +395,7 @@ public:
 		if (!(is_valid & cd_vehicle_summary)) 
 		{
 			is_valid |= cd_vehicle_summary;
-			update_vehicle_summary(vehicle);
+			update_vehicle_summary(vehicle_summary);
 		}
 	}
 
@@ -533,7 +538,7 @@ public:
 		return convoy_t::calc_max_starting_weight(sin_alpha);
 	}
 
-	void calc_move(const settings_t &settings, long delta_t, const weight_summary_t &weight, sint32 akt_speed_soll, sint32 next_speed_limit, sint32 steps_til_limit, sint32 steps_til_break, sint32 &akt_speed, sint32 &sp_soll, float32e8_t &akt_v)
+	void calc_move(const class settings_t &settings, long delta_t, const weight_summary_t &weight, sint32 akt_speed_soll, sint32 next_speed_limit, sint32 steps_til_limit, sint32 steps_til_break, sint32 &akt_speed, sint32 &sp_soll, float32e8_t &akt_v)
 	{
 		validate_vehicle_summary();
 		validate_adverse_summary();
@@ -549,7 +554,6 @@ class potential_convoy_t : public lazy_convoy_t
 {
 private:
 	vector_tpl<const vehikel_besch_t *> &vehicles;
-	karte_t &world;
 protected:
 	virtual void update_vehicle_summary(vehicle_summary_t &vehicle);
 	virtual void update_adverse_summary(adverse_summary_t &adverse);
@@ -558,7 +562,7 @@ protected:
 	virtual float32e8_t get_force_summary(const float32e8_t &speed /* in m/s */);
 	virtual float32e8_t get_power_summary(const float32e8_t &speed /* in m/s */);
 public:
-	potential_convoy_t(karte_t &world, vector_tpl<const vehikel_besch_t *> &besch) : lazy_convoy_t(), vehicles(besch), world(world)
+	potential_convoy_t(vector_tpl<const vehikel_besch_t *> &besch) : lazy_convoy_t(), vehicles(besch)
 	{
 	}
 	virtual sint16 get_current_friction();
@@ -573,7 +577,7 @@ class vehicle_as_potential_convoy_t : public potential_convoy_t
 private:
 	vector_tpl<const vehikel_besch_t *> vehicles;
 public:
-	vehicle_as_potential_convoy_t(karte_t &world, const vehikel_besch_t &besch) : potential_convoy_t(world, vehicles)
+	vehicle_as_potential_convoy_t(const vehikel_besch_t &besch) : potential_convoy_t(vehicles)
 	{
 		vehicles.append(&besch);
 	}
@@ -584,7 +588,7 @@ public:
 class existing_convoy_t : public lazy_convoy_t
 {
 private:
-	convoi_t &convoy;
+	class convoi_t &convoy;
 	weight_summary_t weight;
 protected:
 	virtual void update_vehicle_summary(vehicle_summary_t &vehicle);
@@ -595,7 +599,7 @@ protected:
 	virtual float32e8_t get_force_summary(const float32e8_t &speed /* in m/s */);
 	virtual float32e8_t get_power_summary(const float32e8_t &speed /* in m/s */);
 public:
-	existing_convoy_t(convoi_t &vehicles) : lazy_convoy_t(), convoy(vehicles)
+	existing_convoy_t(class convoi_t &vehicles) : lazy_convoy_t(), convoy(vehicles)
 	{
 		validate_vehicle_summary();
 		validate_adverse_summary();

@@ -15,11 +15,11 @@
 
 #include "../simunits.h"
 #include "../simconvoi.h"
-#include "../vehicle/simvehikel.h"
+#include "../vehicle/simvehicle.h"
 #include "../simcolor.h"
-#include "../simgraph.h"
+#include "../display/simgraph.h"
 #include "../simworld.h"
-#include "../simwin.h"
+#include "../gui/simwin.h"
 
 #include "../dataobj/fahrplan.h"
 #include "../dataobj/translator.h"
@@ -36,51 +36,50 @@
 #include "components/gui_chart.h"
 
 
-karte_t *convoi_detail_t::welt = NULL;
+
 
 
 convoi_detail_t::convoi_detail_t(convoihandle_t cnv)
-: gui_frame_t( cnv->get_name(), cnv->get_besitzer() ),
+: gui_frame_t( cnv->get_name(), cnv->get_owner() ),
   scrolly(&veh_info),
   veh_info(cnv)
 {
 	this->cnv = cnv;
-	welt = cnv->get_welt();
 
-	sale_button.init(button_t::roundbox, "Verkauf", koord(BUTTON4_X, 0), koord(D_BUTTON_WIDTH,D_BUTTON_HEIGHT));
+	sale_button.init(button_t::roundbox, "Verkauf", scr_coord(BUTTON4_X, 0), D_BUTTON_SIZE);
 	sale_button.set_tooltip("Remove vehicle from map. Use with care!");
 	sale_button.add_listener(this);
-	add_komponente(&sale_button);
+	add_component(&sale_button);
 
-	withdraw_button.init(button_t::roundbox, "withdraw", koord(BUTTON3_X, 0), koord(D_BUTTON_WIDTH, D_BUTTON_HEIGHT));
+	withdraw_button.init(button_t::roundbox, "withdraw", scr_coord(BUTTON3_X, 0), D_BUTTON_SIZE);
 	withdraw_button.set_tooltip("Convoi is sold when all wagons are empty.");
 	withdraw_button.add_listener(this);
-	add_komponente(&withdraw_button);
+	add_component(&withdraw_button);
 
-	retire_button.init(button_t::roundbox, "Retire", koord(BUTTON3_X, 16), koord(D_BUTTON_WIDTH, D_BUTTON_HEIGHT));
+	retire_button.init(button_t::roundbox, "Retire", scr_coord(BUTTON3_X, 16), D_BUTTON_SIZE);
 	retire_button.set_tooltip("Convoi is sent to depot when all wagons are empty.");
-	add_komponente(&retire_button);
+	add_component(&retire_button);
 	retire_button.add_listener(this);
 
-	scrolly.set_pos(koord(0, 2+16+5*LINESPACE));
+	scrolly.set_pos(scr_coord(0, 2+16+5*LINESPACE));
 	scrolly.set_show_scroll_x(true);
-	add_komponente(&scrolly);
+	add_component(&scrolly);
 
-	set_fenstergroesse(koord(D_DEFAULT_WIDTH, D_TITLEBAR_HEIGHT+50+17*(LINESPACE+1)+scrollbar_t::BAR_SIZE-6));
-	set_min_windowsize(koord(D_DEFAULT_WIDTH, D_TITLEBAR_HEIGHT+50+3*(LINESPACE+1)+scrollbar_t::BAR_SIZE-3));
+	set_windowsize(scr_size(D_DEFAULT_WIDTH, D_TITLEBAR_HEIGHT+50+17*(LINESPACE+1)+D_SCROLLBAR_HEIGHT-6));
+	set_min_windowsize(scr_size(D_DEFAULT_WIDTH, D_TITLEBAR_HEIGHT+50+3*(LINESPACE+1)+D_SCROLLBAR_HEIGHT-3));
 
 	set_resizemode(diagonal_resize);
-	resize(koord(0,0));
+	resize(scr_coord(0,0));
 }
 
 
-void convoi_detail_t::zeichnen(koord pos, koord gr)
+void convoi_detail_t::draw(scr_coord pos, scr_size size)
 {
 	if(!cnv.is_bound()) {
 		destroy_win(this);
 	}
 	else {
-		if(cnv->get_besitzer()==welt->get_active_player()) {
+		if(cnv->get_owner()==welt->get_active_player()) {
 			withdraw_button.enable();
 			sale_button.enable();
 			retire_button.enable();
@@ -94,7 +93,7 @@ void convoi_detail_t::zeichnen(koord pos, koord gr)
 		retire_button.pressed = cnv->get_depot_when_empty();
 
 		// all gui stuff set => display it
-		gui_frame_t::zeichnen(pos, gr);
+		gui_frame_t::draw(pos, size);
 		int offset_y = pos.y+2+16;
 
 		// current value
@@ -130,7 +129,7 @@ void convoi_detail_t::zeichnen(koord pos, koord gr)
 		offset_y += LINESPACE;
 
 		// current resale value
-		money_to_string( number, cnv->calc_restwert() / 100.0 );
+		money_to_string( number, cnv->calc_sale_value() / 100.0 );
 		buf.clear();
 		buf.printf("%s %s", translator::translate("Restwert:"), number );
 		display_proportional_clip( pos.x+10, offset_y, buf, ALIGN_LEFT, MONEY_PLUS, true );
@@ -201,13 +200,6 @@ void convoi_detail_t::zeichnen(koord pos, koord gr)
 			}
 
 		}
-//=======
-//		money_to_string( number, cnv->calc_restwert() / 100.0 );
-//		buf.clear();
-//		buf.printf(translator::translate("Bonusspeed: %i km/h"), cnv->get_speedbonus_kmh() );
-//		display_proportional_clip( pos.x+10, offset_y, buf, ALIGN_LEFT, COL_BLACK, true );
-//		offset_y += LINESPACE;
-//>>>>>>> aburch/master
 	}
 }
 
@@ -217,18 +209,18 @@ void convoi_detail_t::zeichnen(koord pos, koord gr)
  * This method is called if an action is triggered
  * @author Markus Weber
  */
-bool convoi_detail_t::action_triggered(gui_action_creator_t *komp,value_t /* */)           // 28-Dec-01    Markus Weber    Added
+bool convoi_detail_t::action_triggered(gui_action_creator_t *comp,value_t /* */)           // 28-Dec-01    Markus Weber    Added
 {
 	if(cnv.is_bound()) {
-		if(komp==&sale_button) {
+		if(comp==&sale_button) {
 			cnv->call_convoi_tool( 'x', NULL );
 			return true;
 		}
-		else if(komp==&withdraw_button) {
+		else if(comp==&withdraw_button) {
 			cnv->call_convoi_tool( 'w', NULL );
 			return true;
 		}
-		else if(komp==&retire_button) {
+		else if(comp==&retire_button) {
 			cnv->call_convoi_tool( 'T', NULL );
 			return true;
 		}
@@ -242,20 +234,19 @@ bool convoi_detail_t::action_triggered(gui_action_creator_t *komp,value_t /* */)
  * Set window size and adjust component sizes and/or positions accordingly
  * @author Markus Weber
  */
-void convoi_detail_t::set_fenstergroesse(koord groesse)
+void convoi_detail_t::set_windowsize(scr_size size)
 {
-	gui_frame_t::set_fenstergroesse(groesse);
-	scrolly.set_groesse(get_client_windowsize()-scrolly.get_pos());
+	gui_frame_t::set_windowsize(size);
+	scrolly.set_size(get_client_windowsize()-scrolly.get_pos());
 }
 
 
 // dummy for loading
-convoi_detail_t::convoi_detail_t(karte_t *w)
+convoi_detail_t::convoi_detail_t()
 : gui_frame_t("", NULL ),
   scrolly(&veh_info),
   veh_info(convoihandle_t())
 {
-	welt = w;
 	cnv = convoihandle_t();
 }
 
@@ -276,11 +267,11 @@ void convoi_detail_t::rdwr(loadsave_t *file)
 		convoi_t::rdwr_convoihandle_t(file, cnv);
 	}
 	// window size, scroll position
-	koord gr = get_fenstergroesse();
+	scr_size size = get_windowsize();
 	sint32 xoff = scrolly.get_scroll_x();
 	sint32 yoff = scrolly.get_scroll_y();
 
-	gr.rdwr( file );
+	size.rdwr( file );
 	file->rdwr_long( xoff );
 	file->rdwr_long( yoff );
 
@@ -293,10 +284,10 @@ void convoi_detail_t::rdwr(loadsave_t *file)
 		}
 
 		// now we can open the window ...
-		koord const& pos = win_get_pos(this);
+		scr_coord const& pos = win_get_pos(this);
 		convoi_detail_t *w = new convoi_detail_t(cnv);
 		create_win(pos.x, pos.y, w, w_info, magic_convoi_detail + cnv.get_id());
-		w->set_fenstergroesse( gr );
+		w->set_windowsize( size );
 		w->scrolly.set_scroll_position( xoff, yoff );
 		// we must invalidate halthandle
 		cnv = convoihandle_t();
@@ -317,17 +308,16 @@ gui_vehicleinfo_t::gui_vehicleinfo_t(convoihandle_t cnv)
  * Draw the component
  * @author Hj. Malthaner
  */
-void gui_vehicleinfo_t::zeichnen(koord offset)
+void gui_vehicleinfo_t::draw(scr_coord offset)
 {
 	// keep previous maximum width
-	int x_size = get_groesse().x-51-pos.x;
+	int x_size = get_size().w-51-pos.x;
+	karte_t *welt = world();
 
 	int total_height = 0;
 	if(cnv.is_bound()) {
 		char number[64];
 		cbuffer_t buf;
-
-		const karte_t* const welt = cnv->get_welt();
 
 		// for bonus stuff
 		const sint32 ref_kmh = welt->get_average_speed( cnv->front()->get_waytype() );
@@ -336,15 +326,15 @@ void gui_vehicleinfo_t::zeichnen(koord offset)
 
 		static cbuffer_t freight_info;
 		for(unsigned veh=0;  veh<cnv->get_vehikel_anzahl(); veh++ ) {
-			vehikel_t *v=cnv->get_vehikel(veh);
+			vehicle_t *v=cnv->get_vehikel(veh);
 			int returns = 0;
 			freight_info.clear();
 
 			// first image
-			KOORD_VAL x, y, w, h;
-			const image_id bild=v->get_basis_bild();
-			display_get_base_image_offset(bild, &x, &y, &w, &h );
-			display_base_img(bild,11-x+pos.x+offset.x,pos.y+offset.y+total_height-y+2,cnv->get_besitzer()->get_player_nr(),false,true);
+			scr_coord_val x, y, w, h;
+			const image_id image=v->get_base_image();
+			display_get_base_image_offset(image, &x, &y, &w, &h );
+			display_base_img(image,11-x+pos.x+offset.x,pos.y+offset.y+total_height-y+2,cnv->get_owner()->get_player_nr(),false,true);
 			w = max(40,w+4)+11;
 
 			// now add the other info
@@ -357,7 +347,7 @@ void gui_vehicleinfo_t::zeichnen(koord offset)
 			// age
 			buf.clear();
 			{
-				const sint32 month = v->get_insta_zeit();
+				const sint32 month = v->get_purchase_time();
 				buf.printf( "%s %s %i", translator::translate("Manufactured:"), translator::get_month_name(month%12), month/12 );
 			}
 			display_proportional_clip( pos.x+w+offset.x, pos.y+offset.y+total_height+extra_y, buf, ALIGN_LEFT, COL_BLACK, true );
@@ -374,7 +364,7 @@ void gui_vehicleinfo_t::zeichnen(koord offset)
 			}
 
 			// value
-			money_to_string( number, v->calc_restwert() / 100.0 );
+			money_to_string( number, v->calc_sale_value() / 100.0 );
 			buf.clear();
 			buf.printf( "%s %s", translator::translate("Restwert:"), number );
 			display_proportional_clip( pos.x+w+offset.x, pos.y+offset.y+total_height+extra_y, buf, ALIGN_LEFT, MONEY_PLUS, true );
@@ -446,7 +436,7 @@ void gui_vehicleinfo_t::zeichnen(koord offset)
 				extra_y += LINESPACE;
 			}
 			
-			if(v->get_fracht_typ()->get_catg_index() == 0)
+			if(v->get_cargo_type()->get_catg_index() == 0)
 			{
 				buf.clear();
 				buf.printf("%s %i", translator::translate("Comfort:"), v->get_comfort() );
@@ -454,23 +444,31 @@ void gui_vehicleinfo_t::zeichnen(koord offset)
 				extra_y += LINESPACE;
 			}
 			
-			if(v->get_fracht_max() > 0) {
+			if(v->get_cargo_max() > 0) {
 
 				// bonus stuff
 				int len = 5+display_proportional_clip( pos.x+w+offset.x, pos.y+offset.y+total_height+extra_y, translator::translate("Base profit per km (when full):"), ALIGN_LEFT, COL_BLACK, true );
 				// Revenue for moving 1 unit 1000 meters -- comes in 1/4096 of simcent, convert to simcents
 				// Excludes TPO/catering revenue, and comfort effects.  FIXME --neroden
-				sint64 fare = v->get_fracht_typ()->get_fare_with_speedbonus(relative_speed_percentage, 1000);
+				sint64 fare = v->get_cargo_type()->get_fare_with_speedbonus(relative_speed_percentage, 1000);
 				// Multiply by capacity, convert to simcents, subtract running costs
-				sint64 profit = (v->get_fracht_max()*fare + 2048ll) / 4096ll - v->get_running_cost(welt);
+				sint64 profit = (v->get_cargo_max()*fare + 2048ll) / 4096ll - v->get_running_cost(welt);
 				money_to_string( number, profit/100.0 );
 				display_proportional_clip( pos.x+w+offset.x+len, pos.y+offset.y+total_height+extra_y, number, ALIGN_LEFT, profit>0?MONEY_PLUS:MONEY_MINUS, true );
 				extra_y += LINESPACE;
 
-				ware_besch_t const& g    = *v->get_fracht_typ();
+				if(  sint64 cost = welt->scale_with_month_length(v->get_besch()->get_maintenance())  ) {
+					KOORD_VAL len = display_proportional_clip( pos.x+w+offset.x, pos.y+offset.y+total_height+extra_y, translator::translate("Maintenance"), ALIGN_LEFT, COL_BLACK, true );
+					len += display_proportional_clip( pos.x+w+offset.x+len, pos.y+offset.y+total_height+extra_y, ": ", ALIGN_LEFT, COL_BLACK, true );
+					money_to_string( number, cost/(100.0) );
+					display_proportional_clip( pos.x+w+offset.x+len, pos.y+offset.y+total_height+extra_y, number, ALIGN_LEFT, MONEY_MINUS, true );
+					extra_y += LINESPACE;
+				}
+
+				ware_besch_t const& g    = *v->get_cargo_type();
 				char const*  const  name = translator::translate(g.get_catg() == 0 ? g.get_name() : g.get_catg_name());
-				freight_info.printf("%u/%u%s %s\n", v->get_fracht_menge(), v->get_fracht_max(), translator::translate(v->get_fracht_mass()), name);
-				v->get_fracht_info(freight_info);
+				freight_info.printf("%u/%u%s %s\n", v->get_total_cargo(), v->get_cargo_max(), translator::translate(v->get_cargo_mass()), name);
+				v->get_cargo_info(freight_info);
 				// show it
 				const int px_len = display_multiline_text( pos.x+offset.x+w, pos.y+offset.y+total_height+extra_y, freight_info, COL_BLACK );
 				if(px_len+w>x_size) {
@@ -531,8 +529,8 @@ void gui_vehicleinfo_t::zeichnen(koord offset)
 		}
 	}
 
-	koord gr(max(x_size+pos.x,get_groesse().x),total_height);
-	if(  gr!=get_groesse()  ) {
-		set_groesse(gr);
+	scr_size size(max(x_size+pos.x,get_size().w),total_height);
+	if(  size!=get_size()  ) {
+		set_size(size);
 	}
 }

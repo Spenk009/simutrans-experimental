@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 #include "../../simunits.h"
-#include "../../vehicle/simvehikel.h"
-#include "../../vehicle/simverkehr.h"
+#include "../../vehicle/simvehicle.h"
+#include "../../vehicle/simroadtraffic.h"
 #include "../stadtauto_besch.h"
 #include "../intro_dates.h"
 
@@ -10,27 +10,14 @@
 #include "../obj_node_info.h"
 
 #include "../../simdebug.h"
-#include "../../dataobj/pakset_info.h"
+#include "../../network/pakset_info.h"
 
 
 void citycar_reader_t::register_obj(obj_besch_t *&data)
 {
-    stadtauto_besch_t *besch = static_cast<stadtauto_besch_t *>(data);
+	stadtauto_besch_t *besch = static_cast<stadtauto_besch_t *>(data);
 
-	// init the length information
-	for( int i=0;  i<8;  i++ ) {
-		if(i<4) {
-			besch->length[i] = 12+2;
-		} else if(i<6) {
-			besch->length[i] = 8+2;
-		}
-		else {
-			besch->length[i] = 16+2;
-		}
-	}
-
-	stadtauto_t::register_besch(besch);
-//    printf("...Stadtauto %s geladen\n", besch->get_name());
+	private_car_t::register_besch(besch);
 
 	checksum_t *chk = new checksum_t();
 	besch->calc_checksum(chk);
@@ -40,7 +27,7 @@ void citycar_reader_t::register_obj(obj_besch_t *&data)
 
 bool citycar_reader_t::successfully_loaded() const
 {
-	return stadtauto_t::alles_geladen();
+	return private_car_t::alles_geladen();
 }
 
 

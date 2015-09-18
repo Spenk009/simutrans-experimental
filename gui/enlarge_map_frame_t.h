@@ -11,7 +11,6 @@
 #include "components/gui_numberinput.h"
 
 class settings_t;
-class karte_t;
 
 class enlarge_map_frame_t  : public gui_frame_t, private action_listener_t
 {
@@ -43,12 +42,11 @@ private:
 	gui_label_t memory;// memory requirement
 	char memory_str[256];
 
-	karte_t *welt;
 
 public:
 	static inline koord koord_from_rotation(settings_t const*, sint16 y, sint16 x, sint16 w, sint16 h);
 
-	enlarge_map_frame_t( spieler_t *spieler, karte_t *welt );
+	enlarge_map_frame_t();
 	~enlarge_map_frame_t();
 
 	/**
@@ -65,7 +63,7 @@ public:
 	 * @return the filename for the helptext, or NULL
 	 * @author Hj. Malthaner
 	 */
-	const char * get_hilfe_datei() const { return "enlarge_map.txt";}
+	const char * get_help_filename() const { return "enlarge_map.txt";}
 
 	/**
 	 * Draw new component. The values to be passed refer to the window
@@ -73,7 +71,7 @@ public:
 	 * component is displayed.
 	 * @author Hj. Malthaner
 	 */
-	void zeichnen(koord pos, koord gr);
+	void draw(scr_coord pos, scr_size size);
 };
 
 #endif

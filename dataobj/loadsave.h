@@ -66,13 +66,17 @@ private:
 
 	void rdwr_xml_number(sint64 &s, const char *typ);
 
-
 	loadsave_t(const loadsave_t&);
 	loadsave_t& operator=(const loadsave_t&);
 
 	friend void *loadsave_thread( void *ptr );
 
+	/**
+	 * Reads into buffer number @p buf_num.
+	 * @returns number of bytes read or -1 in case of error
+	 */
 	int fill_buffer(int buf_num);
+
 	void flush_buffer(int buf_num);
 
 public:
@@ -162,7 +166,7 @@ public:
 
 
 
-// this produced semicautomatic hierachies
+// this produced semicautomatic hierarchies
 class xml_tag_t {
 private:
 	loadsave_t *file;

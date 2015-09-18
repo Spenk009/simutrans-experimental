@@ -14,7 +14,7 @@
 class ai_goods_t : public ai_t
 {
 private:
-	enum zustand {
+	enum state {
 		NR_INIT,
 		NR_SAMMLE_ROUTEN,
 		NR_BAUE_ROUTE1,
@@ -29,7 +29,7 @@ private:
 	};
 
 	// vars für die KI
-	zustand state;
+	state state;
 
 	/* test more than one supplier and more than one good *
 	 * save last factory for building next supplier/consumer *
@@ -120,13 +120,13 @@ public:
 
 	virtual void rdwr(loadsave_t *file);
 
-	virtual void bescheid_vehikel_problem(convoihandle_t cnv,const koord3d ziel);
+	virtual void report_vehicle_problem(convoihandle_t cnv,const koord3d ziel);
 
 	bool set_active( bool b );
 
 	void step();
 
-	void neues_jahr();
+	void new_year();
 
 	virtual void rotate90( const sint16 y_size );
 

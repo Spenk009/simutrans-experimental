@@ -9,26 +9,37 @@
 #include "dataobj/translator.h"
 #include "dataobj/loadsave.h"
 #include "player/simplay.h"
-#include "vehicle/simvehikel.h"
+#include "vehicle/simvehicle.h"
 #include "simconvoi.h"
 #include "convoihandle_t.h"
 #include "simlinemgmt.h"
 
-uint8 convoi_to_line_catgory_[convoi_t::MAX_CONVOI_COST] =
+line_cost_t convoi_to_line_catgory_[convoi_t::MAX_CONVOI_COST] =
 {
-	LINE_CAPACITY, LINE_TRANSPORTED_GOODS, LINE_AVERAGE_SPEED, LINE_COMFORT, LINE_REVENUE, LINE_OPERATIONS, LINE_PROFIT, LINE_DISTANCE, LINE_REFUNDS 
+	LINE_CAPACITY, 
+	LINE_TRANSPORTED_GOODS, 
+	LINE_AVERAGE_SPEED, 
+	LINE_COMFORT, 
+	LINE_REVENUE, 
+	LINE_OPERATIONS, 
+	LINE_PROFIT, 
+	LINE_DISTANCE, 
+	LINE_REFUNDS
+//	LINE_MAXSPEED, 
+//	LINE_WAYTOLL
 };
 
-uint8 simline_t::convoi_to_line_catgory(uint8 cnv_cost)
+line_cost_t simline_t::convoi_to_line_catgory(convoi_t::convoi_cost_t cnv_cost)
 {
 	assert(cnv_cost < convoi_t::MAX_CONVOI_COST);
 	return convoi_to_line_catgory_[cnv_cost];
 }
 
 
-karte_t *simline_t::welt=NULL;
+karte_ptr_t simline_t::welt;
 
-simline_t::simline_t(karte_t* welt, spieler_t* sp, linetype type)
+
+simline_t::simline_t(player_t* player, linetype type)
 {
 	self = linehandle_t(this);
 	char printname[128];
@@ -37,9 +48,8 @@ simline_t::simline_t(karte_t* welt, spieler_t* sp, linetype type)
 
 	init_financial_history();
 	this->type = type;
-	this->welt = welt;
 	this->fpl = NULL;
-	this->sp = sp;
+	this->player = player;
 	withdraw = false;
 	state_color = COL_WHITE;
 
@@ -52,31 +62,23 @@ simline_t::simline_t(karte_t* welt, spieler_t* sp, linetype type)
 	livery_scheme_index = 0;
 
 	create_schedule();
-
-	is_alternating_circle_route = false;
-
-	average_journey_times = new koordhashtable_tpl<id_pair, average_tpl<uint16> >;
-	average_journey_times_reverse_circular = NULL;
 }
 
 
-simline_t::simline_t(karte_t* welt, spieler_t* sp, linetype type, loadsave_t *file)
+simline_t::simline_t(player_t* player, linetype type, loadsave_t *file)
 {
 	// id will be read and assigned during rdwr
 	self = linehandle_t();
 	this->type = type;
-	this->welt = welt;
 	this->fpl = NULL;
-	this->sp = sp;
+	this->player = player;
 	withdraw = false;
 	create_schedule();
-	average_journey_times = new koordhashtable_tpl<id_pair, average_tpl<uint16> >;
-	average_journey_times_reverse_circular = NULL;
 	rdwr(file);
 
 	// now self has the right id but the this-pointer is not assigned to the quickstone handle yet
 	// do this explicitly
-	// some savegames have line_id=0, resolve that in laden_abschliessen
+	// some savegames have line_id=0, resolve that in finish_rd
 	if (self.get_id()!=0) {
 		self = linehandle_t(this, self.get_id());
 	}
@@ -93,9 +95,6 @@ simline_t::~simline_t()
 	delete fpl;
 	self.detach();
 	DBG_MESSAGE("simline_t::~simline_t()", "line %d (%p) destroyed", self.get_id(), this);
-
-	delete average_journey_times;
-	delete average_journey_times_reverse_circular;
 }
 
 void simline_t::create_schedule()
@@ -126,7 +125,7 @@ void simline_t::add_convoy(convoihandle_t cnv, bool from_loading)
 	// first convoi may change line type
 	if (type == trainline  &&  line_managed_convoys.empty() &&  cnv.is_bound()) {
 		// check, if needed to convert to tram/monorail line
-		if (vehikel_t const* const v = cnv->front()) {
+		if (vehicle_t const* const v = cnv->front()) {
 			switch (v->get_besch()->get_waytype()) {
 				case tram_wt:     type = simline_t::tramline;     break;
 				// elevated monorail were saved with wrong coordinates for some versions.
@@ -148,10 +147,10 @@ void simline_t::add_convoy(convoihandle_t cnv, bool from_loading)
 			// Only consider vehicles that really transport something
 			// this helps against routing errors through passenger
 			// trains pulling only freight wagons
-			if(  cnv->get_vehikel(i)->get_fracht_max() == 0  ) {
+			if(  cnv->get_vehikel(i)->get_cargo_max() == 0  ) {
 				continue;
 			}
-			const ware_besch_t *ware=cnv->get_vehikel(i)->get_fracht_typ();
+			const ware_besch_t *ware=cnv->get_vehikel(i)->get_cargo_type();
 			if(  ware!=warenbauer_t::nichts  &&  !goods_catg_index.is_contained(ware->get_catg_index())  ) {
 				goods_catg_index.append( ware->get_catg_index(), 1 );
 				update_schedules = true;
@@ -180,7 +179,7 @@ void simline_t::add_convoy(convoihandle_t cnv, bool from_loading)
 	if(  update_schedules  ) 
 	{
 		// Added by : Knightly
-		haltestelle_t::refresh_routing(fpl, goods_catg_index, sp);
+		haltestelle_t::refresh_routing(fpl, goods_catg_index, player);
 	}
 
 	// if the schedule is flagged as bidirectional, set the initial convoy direction
@@ -189,7 +188,6 @@ void simline_t::add_convoy(convoihandle_t cnv, bool from_loading)
 		start_reversed = !start_reversed;
 		cnv->set_reverse_schedule(start_reversed);
 	}
-	calc_is_alternating_circular_route();
 }
 
 
@@ -204,7 +202,6 @@ void simline_t::remove_convoy(convoihandle_t cnv)
 	if(line_managed_convoys.empty()) {
 		unregister_stops();
 	}
-	calc_is_alternating_circular_route();
 }
 
 
@@ -288,13 +285,18 @@ void simline_t::rdwr(loadsave_t *file)
 		{
 			for (int k = MAX_MONTHS-1; k>=0; k--)
 			{
-				if(((j == LINE_AVERAGE_SPEED || j == LINE_COMFORT) && file->get_experimental_version() <= 1) || (j == LINE_REFUNDS && file->get_experimental_version() < 8))
+#ifdef SPECIAL_RESCUE_12_2
+				if(((j == LINE_AVERAGE_SPEED || j == LINE_COMFORT) && file->get_experimental_version() <= 1) || (j == LINE_REFUNDS && file->get_experimental_version() < 8) || ((j == LINE_DEPARTURES || j == LINE_DEPARTURES_SCHEDULED) && (file->get_experimental_version() < 12 || file->is_loading())))
+#else
+				if(((j == LINE_AVERAGE_SPEED || j == LINE_COMFORT) && file->get_experimental_version() <= 1) || (j == LINE_REFUNDS && file->get_experimental_version() < 8) || ((j == LINE_DEPARTURES || j == LINE_DEPARTURES_SCHEDULED) && file->get_experimental_version() < 12))
+#endif
 				{
 					// Versions of Experimental saves with 1 and below
 					// did not have settings for average speed or comfort.
 					// Thus, this value must be skipped properly to
 					// assign the values. Likewise, versions of Experimental < 8
-					// did not store refund information.
+					// did not store refund information, and those of < 12 did
+					// not store departure or scheduled departure information. 
 					if(file->is_loading())
 					{
 						financial_history[k][j] = 0;
@@ -326,7 +328,11 @@ void simline_t::rdwr(loadsave_t *file)
 
 	if(file->get_experimental_version() >= 2)
 	{
-		const uint8 counter = file->get_version() < 103000 ? LINE_DISTANCE : MAX_LINE_COST;
+#ifdef SPECIAL_RESCUE_12_2
+		const uint8 counter = file->get_version() < 103000 ? LINE_DISTANCE : file->get_experimental_version() < 12 || file->is_loading() ? LINE_REFUNDS + 1 : MAX_LINE_COST;
+#else
+		const uint8 counter = file->get_version() < 103000 ? LINE_DISTANCE : file->get_experimental_version() < 12 ? LINE_REFUNDS + 1 : MAX_LINE_COST;
+#endif
 		for(uint8 i = 0; i < counter; i ++)
 		{	
 			file->rdwr_long(rolling_average[i]);
@@ -347,10 +353,10 @@ void simline_t::rdwr(loadsave_t *file)
 	{
 		if(file->is_saving())
 		{
-			uint32 count = average_journey_times->get_count();
+			uint32 count = average_journey_times.get_count();
 			file->rdwr_long(count);
 
-			FOR(journey_times_map, const& iter, *average_journey_times)
+			FOR(journey_times_map, const& iter, average_journey_times)
 			{
 				id_pair idp = iter.key;
 				file->rdwr_short(idp.x);
@@ -365,7 +371,7 @@ void simline_t::rdwr(loadsave_t *file)
 		{
 			uint32 count = 0;
 			file->rdwr_long(count);
-			average_journey_times->clear();
+			average_journey_times.clear();
 			for(uint32 i = 0; i < count; i ++)
 			{
 				id_pair idp;
@@ -381,88 +387,55 @@ void simline_t::rdwr(loadsave_t *file)
 				average.count = count;
 				average.total = total;
 
-				average_journey_times->put(idp, average);
+				average_journey_times.put(idp, average);
 			}
 		}
 	}
-	if(file->get_version() >= 111002 && file->get_experimental_version() >= 10)
+	if(file->get_version() >= 111002 && file->get_experimental_version() >= 10 && file->get_experimental_version() < 12)
 	{
-		file->rdwr_bool(is_alternating_circle_route);
-		if(is_alternating_circle_route)
+		bool dummy_is_alternating_circle_route = false; // Deprecated. 
+		file->rdwr_bool(dummy_is_alternating_circle_route);
+		if(dummy_is_alternating_circle_route)
 		{
 			if(file->is_saving())
 			{
-				uint32 count = average_journey_times_reverse_circular->get_count();
+				uint32 count = 0;
 				file->rdwr_long(count);
-
-				FOR(journey_times_map, const& iter, *average_journey_times_reverse_circular)
-				{
-					id_pair idp = iter.key;
-					file->rdwr_short(idp.x);
-					file->rdwr_short(idp.y);
-					sint16 value = iter.value.count;
-					file->rdwr_short(value);
-					value = iter.value.total;
-					file->rdwr_short(value);
-				}
+				// There are no data to save.
 			}
 			else
 			{
 				uint32 count = 0;
 				file->rdwr_long(count);
-				if(average_journey_times_reverse_circular)
-				{
-					average_journey_times_reverse_circular->clear();
-				}
-				else
-				{
-					average_journey_times_reverse_circular = new journey_times_map();
-				}
 				for(uint32 i = 0; i < count; i ++)
 				{
-					id_pair idp;
-					file->rdwr_short(idp.x);
-					file->rdwr_short(idp.y);
+					id_pair dummy_idp;
+					file->rdwr_short(dummy_idp.x);
+					file->rdwr_short(dummy_idp.y);
 				
-					uint16 count;
-					uint16 total;
-					file->rdwr_short(count);
-					file->rdwr_short(total);
-
-					average_tpl<uint16> average;
-					average.count = count;
-					average.total = total;
-
-					average_journey_times_reverse_circular->put(idp, average);
+					uint16 dummy;
+					file->rdwr_short(dummy);
+					file->rdwr_short(dummy);
 				}
 			}
 		}
-		else
-		{
-			delete average_journey_times_reverse_circular;
-			average_journey_times_reverse_circular = NULL;
-		}
-	}
-	else
-	{
-		calc_is_alternating_circular_route();
 	}
 }
 
 
-
-void simline_t::laden_abschliessen()
+void simline_t::finish_rd()
 {
 	if(  !self.is_bound()  ) {
 		// get correct handle
-		self = sp->simlinemgmt.get_line_with_id_zero();
+		self = player->simlinemgmt.get_line_with_id_zero();
 		assert( self.get_rep() == this );
-		DBG_MESSAGE("simline_t::laden_abschliessen", "assigned id=%d to line %s", self.get_id(), get_name());
+		DBG_MESSAGE("simline_t::finish_rd", "assigned id=%d to line %s", self.get_id(), get_name());
 	}
 	if (!line_managed_convoys.empty()) {
 		register_stops(fpl);
 	}
 	recalc_status();
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 }
 
 
@@ -471,7 +444,7 @@ void simline_t::register_stops(schedule_t * fpl)
 {
 DBG_DEBUG("simline_t::register_stops()", "%d fpl entries in schedule %p", fpl->get_count(),fpl);
 	FOR(minivec_tpl<linieneintrag_t>, const& i, fpl->eintrag) {
-		halthandle_t const halt = haltestelle_t::get_halt(welt, i.pos, sp);
+		halthandle_t const halt = haltestelle_t::get_halt(i.pos, player);
 		if(halt.is_bound()) {
 //DBG_DEBUG("simline_t::register_stops()", "halt not null");
 			halt->add_line(self);
@@ -480,7 +453,7 @@ DBG_DEBUG("simline_t::register_stops()", "%d fpl entries in schedule %p", fpl->g
 DBG_DEBUG("simline_t::register_stops()", "halt null");
 		}
 	}
-	calc_is_alternating_circular_route();
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 }
 
 int simline_t::get_replacing_convoys_count() const {
@@ -503,18 +476,19 @@ void simline_t::unregister_stops()
 	{
 		i->clear_departures();
 	}
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 }
 
 
 void simline_t::unregister_stops(schedule_t * fpl)
 {
 	FOR(minivec_tpl<linieneintrag_t>, const& i, fpl->eintrag) {
-		halthandle_t const halt = haltestelle_t::get_halt(welt, i.pos, sp);
+		halthandle_t const halt = haltestelle_t::get_halt(i.pos, player);
 		if(halt.is_bound()) {
 			halt->remove_line(self);
 		}
 	}
-	calc_is_alternating_circular_route();
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 }
 
 
@@ -525,23 +499,23 @@ void simline_t::renew_stops()
 		register_stops( fpl );
 	
 		// Added by Knightly
-		haltestelle_t::refresh_routing(fpl, goods_catg_index, sp);
+		haltestelle_t::refresh_routing(fpl, goods_catg_index, player);
 		
 		DBG_DEBUG("simline_t::renew_stops()", "Line id=%d, name='%s'", self.get_id(), name.c_str());
 	}
-	calc_is_alternating_circular_route();
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 }
 
 void simline_t::set_schedule(schedule_t* fpl)
 {
 	if (this->fpl) 
 	{
-		haltestelle_t::refresh_routing(fpl, goods_catg_index, sp);
+		haltestelle_t::refresh_routing(fpl, goods_catg_index, player);
 		unregister_stops();
 		delete this->fpl;
 	}
 	this->fpl = fpl;
-	calc_is_alternating_circular_route();
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 }
 
 
@@ -565,6 +539,7 @@ void simline_t::new_month()
 		financial_history[0][j] = 0;
 	}
 	financial_history[0][LINE_CONVOIS] = count_convoys();
+	financial_history[0][LINE_DEPARTURES_SCHEDULED] = calc_departures_scheduled();
 
 	if(financial_history[1][LINE_AVERAGE_SPEED] == 0)
 	{
@@ -611,17 +586,21 @@ void simline_t::recalc_status()
 	{
 		// Loss-making
 		state_color = COL_RED;
-	} 
-
+	}
 	else if((financial_history[0][LINE_OPERATIONS]|financial_history[1][LINE_OPERATIONS])==0) 
 	{
-		// Stuck or static
+		// nothing moved
 		state_color = COL_YELLOW;
 	}
 	else if(has_overcrowded())
 	{
 		// Overcrowded
 		state_color = COL_DARK_PURPLE;
+	}
+	else if(financial_history[1][LINE_DEPARTURES] < financial_history[1][LINE_DEPARTURES_SCHEDULED])
+	{
+		// Is missing scheduled slots.
+		state_color = COL_DARK_TURQUOISE;
 	}
 	else if(welt->use_timeline()) 
 	{
@@ -694,7 +673,7 @@ void simline_t::recalc_catg_index()
 	}
 
 	// refresh only those categories which are either removed or added to the category list
-	haltestelle_t::refresh_routing(fpl, differences, sp);
+	haltestelle_t::refresh_routing(fpl, differences, player);
 }
 
 
@@ -718,37 +697,21 @@ void simline_t::propogate_livery_scheme()
 	}
 }
 
-
-void simline_t::calc_is_alternating_circular_route()
+sint64 simline_t::calc_departures_scheduled()
 {
-	const bool old_is_alternating_circle_route = is_alternating_circle_route;
-	is_alternating_circle_route = false;
-	const uint32 count = count_convoys();
-	if(count == 0)
+	if(fpl->get_spacing() == 0)
 	{
-		return;
-	}
-	bool first_reverse_schedule = get_convoy(0)->get_reverse_schedule();
-	if((get_convoy(0)->is_circular_route() || get_convoy(count - 1)->is_circular_route()) && count > 1)
-	{
-		for(uint32 i = 1; i < count; i ++)
-		{
-			if(get_convoy(i)->get_reverse_schedule() != first_reverse_schedule)
-			{
-				is_alternating_circle_route = true;
-				break;
-			}
-		}
+		return 0;
 	}
 	
-	if(old_is_alternating_circle_route == false && is_alternating_circle_route == true)
-	{
-		delete average_journey_times_reverse_circular;
-		average_journey_times_reverse_circular = new journey_times_map;
+	sint64 timed_departure_points_count = 0ll;
+	for(int i = 0; i < fpl->get_count(); i++)
+	{		
+		if(fpl->eintrag[i].wait_for_time || fpl->eintrag[i].ladegrad > 0)
+		{
+			timed_departure_points_count ++;
+		}
 	}
-	else if(is_alternating_circle_route == true && is_alternating_circle_route == false)
-	{
-		delete average_journey_times_reverse_circular;
-		average_journey_times_reverse_circular = NULL;
-	}
+
+	return timed_departure_points_count * (sint64) fpl->get_spacing();
 }

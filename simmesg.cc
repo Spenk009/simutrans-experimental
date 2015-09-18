@@ -11,13 +11,13 @@
 #include "simdebug.h"
 #include "simmesg.h"
 #include "simticker.h"
-#include "simgraph.h"
+#include "display/simgraph.h"
 #include "simcolor.h"
-#include "simwin.h"
+#include "gui/simwin.h"
 #include "simworld.h"
 
 #include "dataobj/loadsave.h"
-#include "dataobj/umgebung.h"
+#include "dataobj/environment.h"
 #include "player/simplay.h"
 #include "utils/simstring.h"
 #include "tpl/slist_tpl.h"
@@ -33,7 +33,7 @@ void message_t::node::rdwr(loadsave_t *file)
 	file->rdwr_short( color );
 	file->rdwr_long( time );
 	if(  file->is_loading()  ) {
-		bild = IMG_LEER;
+		image = IMG_LEER;
 	}
 }
 
@@ -43,8 +43,8 @@ PLAYER_COLOR_VAL message_t::node::get_player_color(karte_t *welt) const
 	// correct for player color
 	PLAYER_COLOR_VAL colorval = color;
 	if(  color&PLAYER_FLAG  ) {
-		spieler_t *sp = welt->get_spieler(color&(~PLAYER_FLAG));
-		colorval = sp ? PLAYER_FLAG+sp->get_player_color1()+1 : MN_GREY0;
+		player_t *player = welt->get_player(color&(~PLAYER_FLAG));
+		colorval = player ? PLAYER_FLAG+player->get_player_color1()+1 : MN_GREY0;
 	}
 	return colorval;
 }
@@ -105,10 +105,10 @@ void message_t::set_message_flags( sint32 t, sint32 w, sint32 a, sint32 i)
  * @param pos    position of the event
  * @param color  message color
  * @param where type of message
- * @param bild image associated with message (will be ignored if pos!=koord::invalid)
+ * @param image image associated with message (will be ignored if pos!=koord::invalid)
  * @author prissi
  */
-void message_t::add_message(const char *text, koord pos, uint16 what_flags, PLAYER_COLOR_VAL color, image_id bild )
+void message_t::add_message(const char *text, koord pos, uint16 what_flags, PLAYER_COLOR_VAL color, image_id image )
 {
 DBG_MESSAGE("message_t::add_msg()","%40s (at %i,%i)", text, pos.x, pos.y );
 
@@ -166,7 +166,7 @@ DBG_MESSAGE("message_t::add_msg()","%40s (at %i,%i)", text, pos.x, pos.y );
 	n->pos = pos;
 	n->color = color;
 	n->time = welt->get_current_month();
-	n->bild = bild;
+	n->image = image;
 
 	PLAYER_COLOR_VAL colorval = n->get_player_color(welt);
 	// should we send this message to a ticker?
@@ -184,15 +184,15 @@ DBG_MESSAGE("message_t::add_msg()","%40s (at %i,%i)", text, pos.x, pos.y );
 	}
 	// check if some window has focus
 	gui_frame_t *old_top = win_get_top();
-	gui_komponente_t *focus = win_get_focus();
+	gui_component_t *focus = win_get_focus();
 
 	// should we open a window?
 	if (  art & (auto_win_flags | win_flags)  ) {
 		news_window* news;
 		if (pos == koord::invalid) {
-			news = new news_img(p, bild, colorval);
+			news = new news_img(p, image, colorval);
 		} else {
-			news = new news_loc(welt, p, pos, colorval);
+			news = new news_loc(p, pos, colorval);
 		}
 		wintype w_t = art & win_flags ? w_info /* normal window */ : w_time_delete /* autoclose window */;
 
@@ -218,7 +218,7 @@ void message_t::rdwr( loadsave_t *file )
 {
 	uint16 msg_count;
 	if(  file->is_saving()  ) {
-		if(  umgebung_t::server  ) {
+		if(  env_t::server  ) {
 			// on server: do not save local messages
 			msg_count = 0;
 			FOR(slist_tpl<node*>, const i, list) {

@@ -22,32 +22,30 @@
 
 #include "../convoihandle_t.h"
 #include "../linehandle_t.h"
-#include "../simwin.h"
+#include "../gui/simwin.h"
 #include "../tpl/vector_tpl.h"
 
 
 class zeiger_t;
 class schedule_t;
 struct linieneintrag_t;
-class spieler_t;
+class player_t;
 class cbuffer_t;
-class karte_t;
 class loadsave_t;
 
 
-class fahrplan_gui_stats_t : public gui_komponente_t
+class fahrplan_gui_stats_t : public gui_world_component_t
 {
 private:
-	static karte_t *welt;
 	static cbuffer_t buf;
 	static zeiger_t *aktuell_mark;
 
 
 	schedule_t* fpl;
-	spieler_t* sp;
+	player_t* player;
 
 public:
-	fahrplan_gui_stats_t(karte_t* w, spieler_t *s);
+	fahrplan_gui_stats_t(player_t *s);
 	~fahrplan_gui_stats_t();
 
 	void set_fahrplan( schedule_t* f ) { fpl = f; }
@@ -55,7 +53,7 @@ public:
 	void highlight_schedule( schedule_t *markfpl, bool marking );
 
 	// Draw the component
-	void zeichnen(koord offset);
+	void draw(scr_coord offset);
 };
 
 
@@ -74,20 +72,16 @@ class fahrplan_gui_t :	public gui_frame_t,
 	 *
 	 * @author Hj. Malthaner
 	 */
-	static void gimme_stop_name(cbuffer_t & buf, karte_t *welt, const spieler_t *sp, const linieneintrag_t &entry, bool no_control_tower = false );
+	static void gimme_stop_name(cbuffer_t & buf, const player_t *player, const linieneintrag_t &entry, bool no_control_tower = false );
 
 	/**
 	 * Append description of entry to buf.
 	 * short version, without loading level and position
 	 */
-	static void gimme_short_stop_name(cbuffer_t& buf, karte_t* welt, spieler_t const* sp, const schedule_t *fpl, int i, int max_chars);
+	static void gimme_short_stop_name(cbuffer_t& buf, player_t const* player, const schedule_t *fpl, int i, int max_chars);
 
 private:
-	static char no_line[128];
-
 	enum mode_t {adding, inserting, removing, undefined_mode};
-
-	vector_tpl<linehandle_t> lines;
 
 	mode_t mode;
 
@@ -98,10 +92,10 @@ private:
 
 	// always needed
 	button_t bt_add, bt_insert, bt_remove; // stop management
-	button_t bt_bidirectional, bt_mirror, bt_same_spacing_shift;
+	button_t bt_bidirectional, bt_mirror, bt_wait_for_time, bt_same_spacing_shift;
 
 	button_t bt_wait_prev, bt_wait_next;	// waiting in parts of month
-	gui_label_t lb_wait, lb_waitlevel, lb_waitlevel_as_clock;
+	gui_label_t lb_wait, lb_waitlevel_as_clock;
 
 	gui_label_t lb_load;
 	gui_numberinput_t numimp_load;
@@ -129,21 +123,20 @@ private:
 	uint32 last_schedule_count;
 
 	// set the correct tool now ...
-	void update_werkzeug(bool set);
+	void update_tool(bool set);
 
 	// changes the waiting/loading levels if allowed
 	void update_selection();
 protected:
-	static karte_t *welt;
 	schedule_t *fpl;
 	schedule_t* old_fpl;
-	spieler_t *sp;
+	player_t *player;
 	convoihandle_t cnv;
 
 	linehandle_t new_line, old_line;
 
 public:
-	fahrplan_gui_t(schedule_t* fpl, spieler_t* sp, convoihandle_t cnv);
+	fahrplan_gui_t(schedule_t* fpl, player_t* player, convoihandle_t cnv);
 
 	virtual ~fahrplan_gui_t();
 
@@ -152,19 +145,19 @@ public:
 
 	bool infowin_event(event_t const*) OVERRIDE;
 
-	const char *get_hilfe_datei() const {return "schedule.txt";}
+	const char *get_help_filename() const {return "schedule.txt";}
 
 	/**
 	 * Draw the Frame
 	 * @author Hansjörg Malthaner
 	 */
-	void zeichnen(koord pos, koord gr);
+	void draw(scr_coord pos, scr_size size);
 
 	/**
 	 * Set window size and adjust component sizes and/or positions accordingly
 	 * @author Hj. Malthaner
 	 */
-	virtual void set_fenstergroesse(koord groesse);
+	virtual void set_windowsize(scr_size size);
 
 	/**
 	 * show or hide the line selector combobox and its associated label
@@ -183,7 +176,7 @@ public:
 	void map_rotate90( sint16 );
 
 	// this constructor is only used during loading
-	fahrplan_gui_t(karte_t *welt);
+	fahrplan_gui_t();
 
 	virtual void rdwr( loadsave_t *file );
 

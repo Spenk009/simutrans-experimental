@@ -8,12 +8,23 @@
  */
 
 // menus
-const skin_besch_t* skinverwaltung_t::werkzeuge_general  = NULL;
-const skin_besch_t* skinverwaltung_t::werkzeuge_simple   = NULL;
-const skin_besch_t* skinverwaltung_t::werkzeuge_dialoge  = NULL;
-const skin_besch_t* skinverwaltung_t::werkzeuge_toolbars = NULL;
+const skin_besch_t* skinverwaltung_t::tool_icons_general  = NULL;
+const skin_besch_t* skinverwaltung_t::tool_icons_simple   = NULL;
+const skin_besch_t* skinverwaltung_t::tool_icons_dialoge  = NULL;
+const skin_besch_t* skinverwaltung_t::tool_icons_toolbars = NULL;
+const skin_besch_t* skinverwaltung_t::toolbar_background = NULL;
+
 /* Window skin images are menus too! */
-const skin_besch_t* skinverwaltung_t::window_skin = NULL;
+const skin_besch_t* skinverwaltung_t::button = NULL;
+const skin_besch_t* skinverwaltung_t::round_button = NULL;
+const skin_besch_t* skinverwaltung_t::check_button = NULL;
+const skin_besch_t* skinverwaltung_t::posbutton = NULL;
+const skin_besch_t* skinverwaltung_t::back = NULL;
+const skin_besch_t* skinverwaltung_t::scrollbar = NULL;
+const skin_besch_t* skinverwaltung_t::divider = NULL;
+const skin_besch_t* skinverwaltung_t::editfield = NULL;
+const skin_besch_t* skinverwaltung_t::listbox = NULL;
+const skin_besch_t* skinverwaltung_t::gadget= NULL;
 
 // symbol images
 const skin_besch_t* skinverwaltung_t::biglogosymbol      = NULL;
@@ -62,7 +73,7 @@ const skin_besch_t* skinverwaltung_t::tunnel_texture     = NULL;
 slist_tpl<const skin_besch_t *>skinverwaltung_t::extra_obj;
 
 
-static spezial_obj_tpl<skin_besch_t> misc_objekte[] = {
+static spezial_obj_tpl<skin_besch_t> const misc_objekte[] = {
 	{ &skinverwaltung_t::senke,             "PowerDest"    },
 	{ &skinverwaltung_t::pumpe,             "PowerSource"  },
 	{ &skinverwaltung_t::construction_site, "Construction" },
@@ -71,17 +82,26 @@ static spezial_obj_tpl<skin_besch_t> misc_objekte[] = {
 	{ NULL, NULL }
 };
 
-static spezial_obj_tpl<skin_besch_t> menu_objekte[] = {
+static spezial_obj_tpl<skin_besch_t> const menu_objekte[] = {
 	// new menu system
-	{ &skinverwaltung_t::window_skin,       "WindowSkin"   },
-	{ &skinverwaltung_t::werkzeuge_general, "GeneralTools" },
-	{ &skinverwaltung_t::werkzeuge_simple,  "SimpleTools"  },
-	{ &skinverwaltung_t::werkzeuge_dialoge, "DialogeTools" },
-	{ &skinverwaltung_t::werkzeuge_toolbars,"BarTools"     },
+	{ &skinverwaltung_t::button,            "Button"   },
+	{ &skinverwaltung_t::round_button,      "Roundbutton"  },
+	{ &skinverwaltung_t::check_button,      "Checkbutton"  },
+	{ &skinverwaltung_t::posbutton,         "Posbutton"    },
+	{ &skinverwaltung_t::scrollbar,         "Scrollbar"    },
+	{ &skinverwaltung_t::divider,           "Divider"      },
+	{ &skinverwaltung_t::editfield,         "Editfield"    },
+	{ &skinverwaltung_t::listbox,           "Listbox"      },
+	{ &skinverwaltung_t::back,              "Back"         },
+	{ &skinverwaltung_t::gadget,            "Gadget"       },
+	{ &skinverwaltung_t::tool_icons_general, "GeneralTools" },
+	{ &skinverwaltung_t::tool_icons_simple,  "SimpleTools"  },
+	{ &skinverwaltung_t::tool_icons_dialoge, "DialogeTools" },
+	{ &skinverwaltung_t::tool_icons_toolbars,"BarTools"     },
 	{ NULL, NULL }
 };
 
-static spezial_obj_tpl<skin_besch_t> symbol_objekte[] = {
+static spezial_obj_tpl<skin_besch_t> const symbol_objekte[] = {
 	{ &skinverwaltung_t::seasons_icons,      "Seasons"        },
 	{ &skinverwaltung_t::message_options,    "MessageOptions" },
 	{ &skinverwaltung_t::color_options,      "ColorOptions"   },
@@ -99,7 +119,7 @@ static spezial_obj_tpl<skin_besch_t> symbol_objekte[] = {
 };
 
 // simutrans will work without those
-static spezial_obj_tpl<skin_besch_t> fakultative_objekte[] = {
+static spezial_obj_tpl<skin_besch_t> const fakultative_objekte[] = {
 	{ &skinverwaltung_t::biglogosymbol,      "BigLogo"        },
 	{ &skinverwaltung_t::mouse_cursor,       "Mouse"          },
 	{ &skinverwaltung_t::zughaltsymbol,      "TrainStop"      },
@@ -116,10 +136,11 @@ static spezial_obj_tpl<skin_besch_t> fakultative_objekte[] = {
 	{ &skinverwaltung_t::fastforwardsymbol,  "fastforwardsym" },
 	{ &skinverwaltung_t::pausesymbol,        "pausesym"       },
 	{ &skinverwaltung_t::station_type,       "station_type"   },
+	{ &skinverwaltung_t::toolbar_background,"ToolsBackground"},
 	{ NULL, NULL }
 };
 
-static spezial_obj_tpl<skin_besch_t> cursor_objekte[] = {
+static spezial_obj_tpl<skin_besch_t> const cursor_objekte[] = {
 	// old cursors
 	{ &skinverwaltung_t::bauigelsymbol,  "Builder"      },
 	{ &skinverwaltung_t::cursor_general, "GeneralTools" },
@@ -130,7 +151,7 @@ static spezial_obj_tpl<skin_besch_t> cursor_objekte[] = {
 
 bool skinverwaltung_t::alles_geladen(skintyp_t type)
 {
-	spezial_obj_tpl<skin_besch_t>* sb;
+	spezial_obj_tpl<skin_besch_t> const* sb;
 	switch (type) {
 		case menu:    sb = menu_objekte+1;       break;
 		case cursor:  sb = cursor_objekte;     break;
@@ -151,7 +172,7 @@ bool skinverwaltung_t::alles_geladen(skintyp_t type)
 
 bool skinverwaltung_t::register_besch(skintyp_t type, const skin_besch_t* besch)
 {
-	spezial_obj_tpl<skin_besch_t>* sb;
+	spezial_obj_tpl<skin_besch_t> const* sb;
 	switch (type) {
 		case menu:    sb = menu_objekte;   break;
 		case cursor:  sb = cursor_objekte; break;

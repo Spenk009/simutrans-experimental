@@ -12,7 +12,7 @@ const weg_besch_t *maglev_t::default_maglev=NULL;
  * File loading constructor.
  * @author prissi
  */
-maglev_t::maglev_t(karte_t *welt, loadsave_t *file) : schiene_t(welt, maglev_wt)
+maglev_t::maglev_t(loadsave_t *file) : schiene_t(maglev_wt)
 {
 	rdwr(file);
 }
@@ -30,7 +30,7 @@ void maglev_t::rdwr(loadsave_t *file)
 			dbg->fatal("maglev_t::rwdr()", "No maglev way available");
 		}
 		dbg->warning("maglev_t::rwdr()", "Unknown way replaced by maglev %s (old_max_speed %i)", besch->get_name(), old_max_speed );
-		set_besch(besch);
+		set_besch(besch, file->get_experimental_version() >= 12);
 		if(old_max_speed > 0) {
 			set_max_speed(old_max_speed);
 		}

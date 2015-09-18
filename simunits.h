@@ -55,7 +55,7 @@
  * SPEED units:
  * 1 -- "internal" speed -- yards per tick.
  *      -- this is multiplied by delta_t, which is in ticks (in convoi_t::sync_step)
- *      -- to get distance travelled in yards (passed to vehikel_t:fahre_basis)
+ *      -- to get distance travelled in yards (passed to vehicle_t:do_drive)
  * 2 -- km/h -- core setting here is VEHICLE_SPEED_FACTOR
  * 3 -- tiles per tick
  * 4 -- steps per tick
@@ -94,7 +94,7 @@
  * A vehicle travelling across a tile horizontally can be in this many
  * distinct locations along the tile
  * This is 256, and making it larger would require changing datatypes within
- * vehikel_t.
+ * vehicle_t.
  */
 #define VEHICLE_STEPS_PER_TILE (256)
 #define VEHICLE_STEPS_PER_TILE_SHIFT (8)
@@ -126,22 +126,21 @@
  * and km/h
  * @author Hj. Malthaner
  */
-#define VEHICLE_SPEED_FACTOR  (80)
+#define VEHICLE_SPEED_FACTOR  (5)
 
 /**
  * Converts speed value to km/h
  * @author Hj. Matthaner
- * this is speed * VEHICLE_SPEED_FACTOR / 2^10 rounded to nearest
+ * this is speed * 80 / 1024 rounded to nearest
  */
-#define speed_to_kmh(speed) (((speed)*VEHICLE_SPEED_FACTOR+511) >> 10)
+#define speed_to_kmh(speed) (((speed)*VEHICLE_SPEED_FACTOR+31) >> 6)
 
 /**
  * Converts km/h value to speed
  * @author Hj. Matthaner
- * this is speed * 2^10 /  VEHICLE_SPEED_FACTOR
+ * this is speed * 1024 / 80 = speed * 64 / 5
  */
-#define kmh_to_speed(kmh) (((kmh) << 10) / VEHICLE_SPEED_FACTOR)
-
+#define kmh_to_speed(kmh) (((kmh) << 6) / VEHICLE_SPEED_FACTOR)
 
 // GEAR_FACTOR: a gear of 1.0 is stored as 64
 #define GEAR_FACTOR 64
@@ -152,6 +151,12 @@
 
 // anything greater than 2097151 will give us overflow in kmh_to_speed. 
 #define KMH_SPEED_UNLIMITED (300000)
+
+#ifdef UINT_MAX
+#define MAXUINT32 UINT_MAX
+#else
+#define MAXUINT32 4294967295
+#endif
 
 /**
  * Conversion between km/h and m/s
@@ -203,7 +208,7 @@ extern const float32e8_t steps2yards;
 //	return (sint32)(m2yards * x + float32e8_t::half);
 //}
 
-#define KMH_MIN 4
+#define KMH_MIN 1
 extern const sint32 SPEED_MIN; 
 extern const float32e8_t V_MIN;
 #endif //ndef NETTOOL

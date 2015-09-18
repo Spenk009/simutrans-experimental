@@ -3,12 +3,14 @@
 
 #include "linieneintrag.h"
 
+#include "../halthandle_t.h"
+
 #include "../tpl/minivec_tpl.h"
 
 
 class cbuffer_t;
 class grund_t;
-class spieler_t;
+class player_t;
 class karte_t;
 
 
@@ -52,7 +54,7 @@ public:
 	virtual waytype_t get_waytype() const = 0;
 
 	/**
-	* get current stop of fahrplan
+	* get current stop of the schedule (fahrplan)
 	* @author hsiegeln
 	*/
 	uint8 get_aktuell() const { return aktuell; }
@@ -77,7 +79,7 @@ private:
 
 public:
 	/**
-	 * set the current stop of the fahrplan
+	 * set the current stop of the schedule (fahrplan)
 	 * if new value is bigger than stops available, the max stop will be used
 	 * @author hsiegeln
 	 */
@@ -131,14 +133,24 @@ public:
 	schedule_t(loadsave_t*);
 
 	/**
+	 * returns a halthandle for the next halt in the schedule (or unbound)
+	 */
+	halthandle_t get_next_halt( player_t *player, halthandle_t halt ) const;
+
+	/**
+	 * returns a halthandle for the previous halt in the schedule (or unbound)
+	 */
+	halthandle_t get_prev_halt( player_t *player ) const;
+
+	/**
 	 * fügt eine koordinate an stelle aktuell in den Fahrplan ein
 	 * alle folgenden Koordinaten verschieben sich dadurch
 	 */
-	bool insert(const grund_t* gr, uint16 ladegrad = 0, uint8 waiting_time_shift = 0,  sint16 spacing_shift = 0, bool show_failure = false);
+	bool insert(const grund_t* gr, uint16 ladegrad = 0, uint8 waiting_time_shift = 0, sint16 spacing_shift = 0, bool wait_for_time = false, bool show_failure = false);
 	/**
 	 * hängt eine koordinate an den fahrplan an
 	 */
-	bool append(const grund_t* gr, uint16 ladegrad = 0, uint8 waiting_time_shift = 0, sint16 spacing_shift = 0);
+	bool append(const grund_t* gr, uint16 ladegrad = 0, uint8 waiting_time_shift = 0, sint16 spacing_shift = 0, bool wait_for_time = false);
 
 	// cleanup a schedule, removes double entries
 	void cleanup();
@@ -170,7 +182,7 @@ public:
 	 * compare this fahrplan with another, ignoring order and exact positions and waypoints
 	 * @author prissi
 	 */
-	bool similar( karte_t *welt, const schedule_t *fpl, const spieler_t *sp );
+	bool similar( const schedule_t *fpl, const player_t *player );
 
 	/**
 	 * calculates a return way for this schedule
@@ -205,7 +217,6 @@ private:
 
 	static linieneintrag_t dummy_eintrag;
 };
-
 
 /**
  * Eine Spezialisierung des Fahrplans die nur Stops auf Schienen
@@ -345,6 +356,5 @@ public:
 
 	waytype_t get_waytype() const { return narrowgauge_wt; }
 };
-
 
 #endif

@@ -11,12 +11,14 @@
 #include "bildliste2d_besch.h"
 #include "obj_besch_std_name.h"
 #include "skin_besch.h"
-#include "../dings/gebaeude.h"
+#include "../obj/gebaeude.h"
 
 
 class haus_besch_t;
-class werkzeug_t;
+class tool_t;
+class karte_t;
 class checksum_t;
+
 
 /*
  *  Autor:
@@ -62,22 +64,20 @@ public:
 
 	image_id get_hintergrund(int phase, int hoehe, int season) const
 	{
-		season &= (seasons-1);
 		bildliste2d_besch_t const* const bl = get_child<bildliste2d_besch_t>(0 + 2 * season);
 		if(phase>0 && phase<phasen) {
-			if (bild_besch_t const* const bild = bl->get_bild(hoehe, phase)) {
-				return bild->get_nummer();
+			if (bild_besch_t const* const image = bl->get_bild(hoehe, phase)) {
+				return image->get_nummer();
 			}
 		}
 		// here if this phase does not exists ...
-		bild_besch_t const* const bild = bl->get_bild(hoehe, 0);
-		return bild != NULL ? bild->get_nummer() : IMG_LEER;
+		bild_besch_t const* const image = bl->get_bild(hoehe, 0);
+		return image != NULL ? image->get_nummer() : IMG_LEER;
 	}
 
 	// returns true, if the background is animated
 	bool is_hintergrund_phases(int season) const
 	{
-		season &= (seasons-1);
 		bildliste2d_besch_t const* const bl = get_child<bildliste2d_besch_t>(0 + 2 * season);
 		const uint16 max_h = bl->get_anzahl();
 		for(  uint16 phase=1;  phase<phasen;  phase++  ) {
@@ -92,16 +92,15 @@ public:
 
 	image_id get_vordergrund(int phase,int season) const
 	{
-		season &= (seasons-1);
 		bildliste2d_besch_t const* const bl = get_child<bildliste2d_besch_t>(1 + 2 * season);
 		if(phase>0 && phase<phasen) {
-			if (bild_besch_t const* const bild = bl->get_bild(0, phase)) {
-				return bild->get_nummer();
+			if (bild_besch_t const* const image = bl->get_bild(0, phase)) {
+				return image->get_nummer();
 			}
 		}
 		// here if this phase does not exists ...
-		bild_besch_t const* const bild = bl->get_bild(0, 0);
-		return bild != NULL ? bild->get_nummer() : IMG_LEER;
+		bild_besch_t const* const image = bl->get_bild(0, 0);
+		return image != NULL ? image->get_nummer() : IMG_LEER;
 	}
 
 	koord get_offset() const;
@@ -124,11 +123,12 @@ public:
  *	3   Tile 2
  *	... ...
  */
-class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäude
+class haus_besch_t : public obj_besch_timelined_t {
 	friend class building_reader_t;
 
 	public:
 		/* Unbekannte Gebäude sind nochmal unterteilt */
+		// "Unknown buildings are again divided" (Babelfish)
 		enum utyp
 		{
 			unbekannt         =  0,
@@ -143,7 +143,7 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 			bahnhof           =  8,
 			bushalt           =  9,
 			ladebucht         = 10,
-			hafen             = 11,// this is still current, as it is can be larger than 1x1
+			dock              = 11,// this is still current, as it is can be larger than 1x1
 			binnenhafen       = 12,
 			airport           = 13,
 			monorailstop      = 14,
@@ -161,6 +161,9 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 			depot             = 33,
 			generic_stop      = 34,
 			generic_extension = 35,
+			// there are more types of docks
+			flat_dock         = 36, // dock, but can start on a flat coast line
+			signalbox		  = 70, // Signalbox. 70 to allow for plenty more Standard ones in between.
 			last_haus_typ,
 			unbekannt_flag    = 128,
 		};
@@ -174,8 +177,8 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 		};
 
 	private:
-	gebaeude_t::typ     gtyp;      // Hajo: this is the type of the building
-	utyp            utype; // Hajo: if gtyp == gebaeude_t::unbekannt, then this is the real type
+	gebaeude_t::typ     gtyp;		// Hajo: this is the type of the building
+	utyp				utype;		// Hajo: if gtyp == gebaeude_t::unbekannt, then this is the real type
 
 	uint16 animation_time;	// in ms
 	uint32 extra_data;
@@ -184,12 +187,13 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 		// waytype for depots
 		// player level for headquarters
 		// cluster number for city buildings (0 means no clustering)
+		// Signal groups for signal boxes
 	koord  groesse;
 	flag_t flags;
-	uint16 level;          // or passengers;
-	uint8  layouts;        // 1 2, 4, 8  or 16
-	uint8  enables;		// if it is a stop, what is enabled ...
-	uint8  chance;         // Hajo: chance to build, special buildings, only other is weight factor
+	uint16 level;			// or passengers;
+	uint8  layouts;			// 1 2, 4, 8  or 16
+	uint8  enables;			// if it is a stop, what is enabled; if it is a signal box, the signal group that can be linked to this box.
+	uint8  chance;			// Hajo: chance to build, special buildings, only other is weight factor
 
 	/** @author: jamespetts.
 	 * Additional fields for separate capacity/maintenance
@@ -201,19 +205,17 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 	sint32 scaled_price;
 	sint32 maintenance;
 	sint32 scaled_maintenance;
-	uint16 capacity;
+	uint16 capacity; // For signalboxes, this is the number of signals that it can support.
 
 	uint16 population_and_visitor_demand_capacity; // Population capacity if residential, otherwise visitor demand.
 	uint16 employment_capacity; // Capacity for jobs (this figure is not used for industries)
 	uint16 mail_demand_and_production_capacity; // Both generation and demand for mail (assumed to be symmetric). 
 
+	uint32 radius; // The radius for which this building has effect. For signalboxes, the maximum distance (in meters) that signals operating from here can be placed.
+
 	#define COST_MAGIC (2147483647) 
 
 	climate_bits allowed_climates;
-
-	// when was this building allowed
-	uint16 intro_date;
-	uint16 obsolete_date;
 
 	/**
 	 * Whether this building can or must be built underground.
@@ -236,7 +238,7 @@ class haus_besch_t : public obj_besch_std_name_t { // Daten für ein ganzes Gebäu
 		return gtyp == gebaeude_t::unbekannt && utype == u;
 	}
 
-	werkzeug_t *builder;
+	tool_t *builder;
 
 public:
 
@@ -329,28 +331,6 @@ public:
 		return flags & FLAG_HAS_CURSOR ? get_child<skin_besch_t>(2 + groesse.x * groesse.y * layouts) : 0;
 	}
 
-	/**
-	* @return introduction month
-	* @author Hj. Malthaner
-	*/
-	uint32 get_intro_year_month() const { return intro_date; }
-
-	/**
-	* @return time when obsolete
-	* @author prissi
-	*/
-	uint32 get_retire_year_month() const { return obsolete_date; }
-
-	// true if future
-	bool is_future (const uint16 month_now) const {
-		return month_now  &&  (intro_date > month_now);
-	}
-
-	// true if obsolete
-	bool is_retired (const uint16 month_now) const {
-		return month_now  &&  (obsolete_date <= month_now);
-	}
-
 	// the right house for this area?
 	bool is_allowed_climate( climate cl ) const { return ((1<<cl)&allowed_climates)!=0; }
 
@@ -361,7 +341,7 @@ public:
 	climate_bits get_allowed_climate_bits() const { return allowed_climates; }
 
 	/**
-	* @return station flags (only used for station buildings and oil rigs)
+	* @return station flags (only used for station buildings, oil rigs and traction types in depots)
 	* @author prissi
 	*/
 	int get_enabled() const { return enables; }
@@ -393,6 +373,8 @@ public:
 
 	uint16 get_capacity() const { return capacity; }
 
+	uint32 get_radius() const { return radius; } 
+
 	uint8 get_allow_underground() const { return allow_underground; }
 
 	uint8 get_is_control_tower() const { return is_control_tower; }
@@ -407,12 +389,12 @@ public:
 	}
 
 	// default tool for building
-	werkzeug_t *get_builder() const {
+	tool_t *get_builder() const {
 		return builder;
 	}
 
-	void set_builder( werkzeug_t *w )  {
-		builder = w;
+	void set_builder( tool_t *tool )  {
+		builder = tool;
 	}
 
 	void calc_checksum(checksum_t *chk) const;
@@ -421,8 +403,8 @@ public:
 	bool can_be_built_aboveground() const { return allow_underground != 1; }
 
 	uint32 get_clusters() const {
-		// Only meaningful for res, com, ind
-		if(  gtyp != gebaeude_t::wohnung  &&  gtyp != gebaeude_t::gewerbe  &&  gtyp != gebaeude_t::industrie  ) {
+		// Only meaningful for res, com, ind and signalboxes
+		if(  gtyp != gebaeude_t::wohnung  &&  gtyp != gebaeude_t::gewerbe  &&  gtyp != gebaeude_t::industrie && utype != signalbox) {
 			return 0;
 		}
 		else {
@@ -433,7 +415,6 @@ public:
 	uint16 get_population_and_visitor_demand_capacity() const { return population_and_visitor_demand_capacity; }
 	uint16 get_employment_capacity() const { return employment_capacity; }
 	uint16 get_mail_demand_and_production_capacity() const { return mail_demand_and_production_capacity; }
-
 };
 
 

@@ -11,9 +11,9 @@
 
 #include <stdio.h>
 
-#include "../simtools.h"
+#include "../utils/simrandom.h"
 #include "../simworld.h"
-#include "../simwerkz.h"
+#include "../simtool.h"
 
 #include "../bauer/fabrikbauer.h"
 
@@ -30,12 +30,10 @@
 
 
 // new tool definition
-wkz_build_industries_land_t factory_edit_frame_t::land_chain_tool = wkz_build_industries_land_t();
-wkz_build_industries_city_t factory_edit_frame_t::city_chain_tool = wkz_build_industries_city_t();
-wkz_build_factory_t factory_edit_frame_t::fab_tool = wkz_build_factory_t();
+tool_build_land_chain_t factory_edit_frame_t::land_chain_tool = tool_build_land_chain_t();
+tool_city_chain_t factory_edit_frame_t::city_chain_tool = tool_city_chain_t();
+tool_build_factory_t factory_edit_frame_t::fab_tool = tool_build_factory_t();
 char factory_edit_frame_t::param_str[256];
-
-
 
 static bool compare_fabrik_besch(const fabrik_besch_t* a, const fabrik_besch_t* b)
 {
@@ -43,12 +41,10 @@ static bool compare_fabrik_besch(const fabrik_besch_t* a, const fabrik_besch_t* 
 	return diff < 0;
 }
 
-
-
-factory_edit_frame_t::factory_edit_frame_t(spieler_t* sp_, karte_t* welt) :
-	extend_edit_gui_t(translator::translate("factorybuilder"), sp_, welt),
+factory_edit_frame_t::factory_edit_frame_t(player_t* player_) :
+	extend_edit_gui_t(translator::translate("factorybuilder"), player_),
 	fablist(16),
-	lb_rotation( rot_str, COL_WHITE, gui_label_t::right ),
+	lb_rotation( rot_str, SYSCOL_TEXT_HIGHLIGHT, gui_label_t::right ),
 	lb_rotation_info( translator::translate("Rotation"), COL_BLACK, gui_label_t::left ),
 	lb_production_info( translator::translate("Produktion"), COL_BLACK, gui_label_t::left )
 {
@@ -57,48 +53,50 @@ factory_edit_frame_t::factory_edit_frame_t(spieler_t* sp_, karte_t* welt) :
 	land_chain_tool.set_default_param(param_str);
 	city_chain_tool.set_default_param(param_str);
 	fab_tool.set_default_param(param_str);
-	land_chain_tool.cursor = city_chain_tool.cursor = fab_tool.cursor = werkzeug_t::general_tool[WKZ_BUILD_FACTORY]->cursor;
+	land_chain_tool.cursor = city_chain_tool.cursor = fab_tool.cursor = tool_t::general_tool[TOOL_BUILD_FACTORY]->cursor;
 	fab_besch = NULL;
 
-	bt_city_chain.init( button_t::square_state, "Only city chains", koord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	bt_city_chain.init( button_t::square_state, "Only city chains", scr_coord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
 	bt_city_chain.add_listener(this);
-	add_komponente(&bt_city_chain);
+	add_component(&bt_city_chain);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
-	bt_land_chain.init( button_t::square_state, "Only land chains", koord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	bt_land_chain.init( button_t::square_state, "Only land chains", scr_coord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
 	bt_land_chain.add_listener(this);
-	add_komponente(&bt_land_chain);
+	add_component(&bt_land_chain);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
-	lb_rotation_info.set_pos( koord( get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
-	add_komponente(&lb_rotation_info);
+	lb_rotation_info.set_pos( scr_coord( get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	add_component(&lb_rotation_info);
 
-	bt_left_rotate.init( button_t::repeatarrowleft, NULL, koord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2-16,	offset_of_comp-4 ) );
+	bt_left_rotate.init( button_t::repeatarrowleft, NULL, scr_coord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2-16,	offset_of_comp-4 ) );
 	bt_left_rotate.add_listener(this);
-	add_komponente(&bt_left_rotate);
+	add_component(&bt_left_rotate);
 
-	bt_right_rotate.init( button_t::repeatarrowright, NULL, koord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+50-2, offset_of_comp-4 ) );
+	bt_right_rotate.init( button_t::repeatarrowright, NULL, scr_coord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+50-2, offset_of_comp-4 ) );
 	bt_right_rotate.add_listener(this);
-	add_komponente(&bt_right_rotate);
+	add_component(&bt_right_rotate);
 
-	lb_rotation.set_pos( koord( get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+44, offset_of_comp-4 ) );
-	add_komponente(&lb_rotation);
+	//lb_rotation.set_pos( scr_coord( get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+44, offset_of_comp-4 ) );
+	lb_rotation.set_width( bt_right_rotate.get_pos().x - bt_left_rotate.get_pos().x - bt_left_rotate.get_size().w );
+	lb_rotation.align_to(&bt_left_rotate,ALIGN_EXTERIOR_H | ALIGN_LEFT | ALIGN_CENTER_V);
+	add_component(&lb_rotation);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
-	lb_production_info.set_pos( koord( get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
-	add_komponente(&lb_production_info);
+	lb_production_info.set_pos( scr_coord( get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	add_component(&lb_production_info);
 
-	inp_production.set_pos(koord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2-16,	offset_of_comp-4-2 ));
-	inp_production.set_groesse(koord( 76, 12 ));
+	inp_production.set_pos(scr_coord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2-16,	offset_of_comp-4-2 ));
+	inp_production.set_size(scr_size( 76, 12 ));
 	inp_production.set_limits(0,9999);
 	inp_production.add_listener( this );
-	add_komponente(&inp_production);
+	add_component(&inp_production);
 
 	offset_of_comp += D_BUTTON_HEIGHT;
 
 	fill_list( is_show_trans_name );
 
-	resize(koord(0,0));
+	resize(scr_coord(0,0));
 }
 
 
@@ -160,17 +158,17 @@ void factory_edit_frame_t::fill_list( bool translate )
 
 
 
-bool factory_edit_frame_t::action_triggered( gui_action_creator_t *komp,value_t e)
+bool factory_edit_frame_t::action_triggered( gui_action_creator_t *comp,value_t e)
 {
 	// only one chain can be shown
-	if(  komp==&bt_city_chain  ) {
+	if(  comp==&bt_city_chain  ) {
 		bt_city_chain.pressed ^= 1;
 		if(bt_city_chain.pressed) {
 			bt_land_chain.pressed = 0;
 		}
 		fill_list( is_show_trans_name );
 	}
-	else if(  komp==&bt_land_chain  ) {
+	else if(  comp==&bt_land_chain  ) {
 		bt_land_chain.pressed ^= 1;
 		if(bt_land_chain.pressed) {
 			bt_city_chain.pressed = 0;
@@ -178,10 +176,10 @@ bool factory_edit_frame_t::action_triggered( gui_action_creator_t *komp,value_t 
 		fill_list( is_show_trans_name );
 	}
 	else if(fab_besch) {
-		if (komp==&inp_production) {
+		if (comp==&inp_production) {
 			production = inp_production.get_value();
 		}
-		else if(  komp==&bt_left_rotate  &&  rotation!=255) {
+		else if(  comp==&bt_left_rotate  &&  rotation!=255) {
 			if(rotation==0) {
 				rotation = 255;
 			}
@@ -189,13 +187,13 @@ bool factory_edit_frame_t::action_triggered( gui_action_creator_t *komp,value_t 
 				rotation --;
 			}
 		}
-		else if(  komp==&bt_right_rotate  &&  rotation!=fab_besch->get_haus()->get_all_layouts()-1) {
+		else if(  comp==&bt_right_rotate  &&  rotation!=fab_besch->get_haus()->get_all_layouts()-1) {
 			rotation ++;
 		}
 		// update info ...
 		change_item_info( scl.get_selection() );
 	}
-	return extend_edit_gui_t::action_triggered(komp,e);
+	return extend_edit_gui_t::action_triggered(comp,e);
 }
 
 
@@ -291,7 +289,7 @@ void factory_edit_frame_t::change_item_info(sint32 entry)
 			}
 			buf.append("\n");
 			info_text.recalc_size();
-			cont.set_groesse( info_text.get_groesse() + koord(0, 20) );
+			cont.set_size( info_text.get_size() + scr_size(0, 20) );
 
 			// orientation (255=random)
 			if(besch->get_all_layouts()>1) {
@@ -346,13 +344,13 @@ void factory_edit_frame_t::change_item_info(sint32 entry)
 		// the tools will be always updated, even though the data up there might be still current
 		sprintf( param_str, "%i%c%i,%s", bt_climates.pressed, rotation==255 ? '#' : '0'+rotation, production, fab_besch->get_name() );
 		if(bt_land_chain.pressed) {
-			welt->set_werkzeug( &land_chain_tool, sp );
+			welt->set_tool( &land_chain_tool, player );
 		}
 		else if(bt_city_chain.pressed) {
-			welt->set_werkzeug( &city_chain_tool, sp );
+			welt->set_tool( &city_chain_tool, player );
 		}
 		else {
-			welt->set_werkzeug( &fab_tool, sp );
+			welt->set_tool( &fab_tool, player );
 		}
 	}
 	else if(fab_besch!=NULL) {
@@ -363,6 +361,6 @@ void factory_edit_frame_t::change_item_info(sint32 entry)
 		prod_str[0] = 0;
 		tstrncpy(rot_str, translator::translate("random"), lengthof(rot_str));
 		fab_besch = NULL;
-		welt->set_werkzeug( werkzeug_t::general_tool[WKZ_ABFRAGE], sp );
+		welt->set_tool( tool_t::general_tool[TOOL_QUERY], player );
 	}
 }

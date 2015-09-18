@@ -11,6 +11,7 @@
 #include "get_climate.h"
 #include "building_writer.h"
 #include "skin_writer.h"
+#include "cluster_writer.h"
 
 using std::string;
 
@@ -91,27 +92,11 @@ void tile_writer_t::write_obj(FILE* fp, obj_node_t& parent, int index, int seaso
 	node.write(fp);
 }
 
-// Subroutine for write_obj, to avoid duplicated code
-static uint32 get_cluster_data(tabfileobj_t& obj)
-{
-	uint32 clusters = 0;
-	int* ints = obj.get_ints("clusters");
-
-	for(  int i = 1;  i <= ints[0];  i++  ) {
-		if(  ints[i] > 1  &&  ints[i] <= 32  ) { // Sanity check
-			clusters |= 1<<(ints[i]-1);
-		}
-	}
-	delete [] ints;
-
-	return clusters;
-}
-
 
 void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& obj)
 {
 	// Hajo: take care, hardocded size of node on disc here!
-	obj_node_t node(this, 44, &parent);
+	obj_node_t node(this, 48, &parent);
 
 	write_head(fp, node, obj);
 
@@ -154,13 +139,13 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 
 	const char* type_name = obj.get("type");
 	if (!STRICMP(type_name, "res")) {
-		extra_data = get_cluster_data(obj);
+		extra_data = cluster_writer_t::get_cluster_data(obj, "clusters");
 		gtyp = gebaeude_t::wohnung;
 	} else if (!STRICMP(type_name, "com")) {
-		extra_data = get_cluster_data(obj);
+		extra_data = cluster_writer_t::get_cluster_data(obj, "clusters");
 		gtyp = gebaeude_t::gewerbe;
 	} else if (!STRICMP(type_name, "ind")) {
-		extra_data = get_cluster_data(obj);
+		extra_data = cluster_writer_t::get_cluster_data(obj, "clusters");
 		gtyp = gebaeude_t::industrie;
 	} else if (!STRICMP(type_name, "cur")) {
 		extra_data = obj.get_int("build_time", 0);
@@ -178,7 +163,13 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 		extra_data = obj.get_int("hq_level", 0);
 		utype = haus_besch_t::firmensitz;
 	} else if (!STRICMP(type_name, "habour")  ||  !STRICMP(type_name, "harbour")) {
-		utype      = haus_besch_t::hafen;
+		// buildable only on sloped shores
+		utype      = haus_besch_t::dock;
+		extra_data = water_wt;
+	}
+	else if (!STRICMP(type_name, "dock")) {
+		// buildable only on flat shores
+		utype      = haus_besch_t::flat_dock;
 		extra_data = water_wt;
 	} else if (!STRICMP(type_name, "fac")) {
 		utype    = haus_besch_t::fabrik;
@@ -196,6 +187,9 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	} else if (!STRICMP(type_name, "depot")) {
 		utype      = haus_besch_t::depot;
 		extra_data = get_waytype(obj.get("waytype"));
+	} else if (!STRICMP(type_name, "signalbox")) {
+		utype      = haus_besch_t::signalbox;
+		extra_data = cluster_writer_t::get_cluster_data(obj, "signal_groups");
 	} else if (!STRICMP(type_name, "any") || *type_name == '\0') {
 		// for instance "MonorailGround"
 		utype = haus_besch_t::weitere;
@@ -220,6 +214,7 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 		dbg->fatal("building_writer_t::write_obj()","extension_building is obsolete keyword for %s; use stop/extension and waytype!", obj.get("name") );
 	}
 
+
 	if (obj.get_int("enables_pax", 0) > 0) {
 		enables |= 1;
 	}
@@ -230,7 +225,7 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 		enables |= 4;
 	}
 
-	if(  utype==haus_besch_t::generic_extension  ||  utype==haus_besch_t::generic_stop  ||  utype==haus_besch_t::hafen  ||  utype==haus_besch_t::depot  ||  utype==haus_besch_t::fabrik  ) {
+	if(  utype==haus_besch_t::generic_extension  ||  utype==haus_besch_t::generic_stop  ||  utype==haus_besch_t::dock  ||  utype==haus_besch_t::depot  ||  utype==haus_besch_t::fabrik  ) {
 		// since elevel was reduced by one beforehand ...
 		// TODO: Remove this when the reduction of level is removed.
 		++level;
@@ -248,13 +243,13 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 		obj.get_int("retire_year", DEFAULT_RETIRE_DATE) * 12 +
 		obj.get_int("retire_month", 1) - 1;
 
-	// @author: Kieron Green (ideas from original experimental code by jamespetts)
+	// @author: Kieron Green (ideas from experimental code by jamespetts)
 	// capacity and price information.
 	// Stands in place of the "level" setting, but uses "level" data by default.
 
-	 // NOTE: Default for maintenance and price must be set when loading so use magic default here
-	 // also check for "station_xx" for backwards compatibility
-		
+	//NOTE: Default for maintenance and price must be set when loading so use magic default here
+	//also check for "station_xx" for experimental compatibility
+
 	sint32 capacity = obj.get_int("capacity", level * 32);
 	if(  capacity == level * 32  ) {
 		capacity = obj.get_int("station_capacity", level * 32);
@@ -270,9 +265,9 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 		price = obj.get_int("station_price", COST_MAGIC);
 	}
 	 
+	uint32 radius = obj.get_int("radius", 1000); 
 
 	uint8 allow_underground = obj.get_int("allow_underground", 2);
-
 	if(allow_underground > 2)
 	{
 		// Prohibit illegal values here.
@@ -377,11 +372,11 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 									fflush(NULL);
 #endif
 									break;
-								} else {
+								}
+								else {
 									// no higher front images
 									if (h > 0 && pos == 0) {
-										printf("WARNING: frontimage height MUST be one tile only!\n");
-										fflush(NULL);
+										dbg->error( obj_writer_t::last_name, "Frontimage height MUST be one tile only!");
 										break;
 									}
 								}
@@ -411,10 +406,10 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	// to the standard version number, to be subtracted again when read.
 	// Start at 0x100 and increment in hundreds (hex).
 	// Reset to 0x100 for Standard 0x8008
-	version += 0x100;
+	// 0x200: Experimental version 12: radii for buildings
+	version += 0x200;
 	
 	// Hajo: write version data
-
 	node.write_uint16(fp, version,									0);
 
 	// Hajo: write besch data
@@ -435,13 +430,13 @@ void building_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	node.write_uint16(fp, capacity,									26);
 	node.write_sint32(fp, maintenance,								28);
 	node.write_sint32(fp, price,									32);
-	node.write_uint8(fp, allow_underground,							36);
-	node.write_uint8(fp, is_control_tower,							37);
+	node.write_uint8 (fp, allow_underground,						36);
+	node.write_uint8 (fp, is_control_tower,							37);
 	node.write_uint16(fp, population_and_visitor_demand_capacity,	38);
 	node.write_uint16(fp, employment_capacity,						40);
 	node.write_uint16(fp, mail_demand_and_production_capacity,		42);
+	node.write_uint32(fp, radius,									44);
 	
-
 	// probably add some icons, if defined
 	slist_tpl<string> cursorkeys;
 

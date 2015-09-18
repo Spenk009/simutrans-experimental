@@ -9,10 +9,12 @@
 
 #include "ai.h"
 
+class marker_t;
+
 class ai_passenger_t : public ai_t
 {
 private:
-	enum zustand {
+	enum state {
 		NR_INIT,
 		NR_SAMMLE_ROUTEN,
 		NR_BAUE_ROUTE1,
@@ -26,7 +28,7 @@ private:
 	};
 
 	// vars für die KI
-	zustand state;
+	state state;
 
 	// we will use this vehicle!
 	const vehikel_besch_t *road_vehicle;
@@ -44,6 +46,9 @@ private:
 	const stadt_t *end_stadt;	// target is town
 	const gebaeude_t *end_ausflugsziel;
 	fabrik_t *ziel;
+
+	// marker field
+	marker_t *marker;
 
 	halthandle_t  get_our_hub( const stadt_t *s ) const;
 
@@ -75,19 +80,17 @@ private:
 public:
 	ai_passenger_t(karte_t *wl, uint8 nr);
 
-	virtual ~ai_passenger_t() {}
-
 	// this type of AIs identifier
 	virtual uint8 get_ai_id() const { return AI_PASSENGER; }
 
 	// cannot do rail
 	virtual void set_rail_transport( bool ) { rail_transport = false; }
 
-	virtual void bescheid_vehikel_problem(convoihandle_t cnv,const koord3d ziel);
+	virtual void report_vehicle_problem(convoihandle_t cnv,const koord3d ziel);
 
 	virtual void rdwr(loadsave_t *file);
 
-	virtual void laden_abschliessen();
+	virtual void load_finished();
 
 	bool set_active( bool b );
 

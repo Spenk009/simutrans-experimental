@@ -3,7 +3,7 @@
 
 // for the progress bar
 #include "../../simcolor.h"
-#include "../../simimg.h"
+#include "../../display/simimg.h"
 #include "../../simsys.h"
 #include "../../simtypes.h"
 #include "../../simloadingscreen.h"
@@ -12,12 +12,9 @@
 #include "../grund_besch.h"	// for the error message!
 #include "../../simskin.h"
 
-// for init of button images
-#include "../../gui/components/gui_button.h"
-
 // normal stuff
 #include "../../dataobj/translator.h"
-#include "../../dataobj/umgebung.h"
+#include "../../dataobj/environment.h"
 
 #include "../../utils/searchfolder.h"
 #include "../../utils/simstring.h"
@@ -48,35 +45,18 @@ void obj_reader_t::register_reader()
 }
 
 
-bool obj_reader_t::init()
-{
-	// search for skins first
-	chdir( umgebung_t::program_dir );
-	load( "skin/", translator::translate("Loading skins ...") );
-	if(  umgebung_t::program_dir != umgebung_t::user_dir  ) {
-		chdir( umgebung_t::user_dir );
-		load( "skin/", translator::translate("Loading skins ...") );
-	}
-	chdir( umgebung_t::program_dir );
-	button_t::init_button_images();
-	return true;
-}
-
-
-bool obj_reader_t::laden_abschliessen()
+bool obj_reader_t::finish_rd()
 {
 	resolve_xrefs();
 
 	FOR(obj_map, const& i, *obj_reader) {
-		DBG_MESSAGE("obj_reader_t::laden_abschliessen()","Checking %s objects...", i.value->get_type_name());
+		DBG_MESSAGE("obj_reader_t::finish_rd()","Checking %s objects...", i.value->get_type_name());
 
 		if (!i.value->successfully_loaded()) {
-			dbg->warning("obj_reader_t::laden_abschliessen()","... failed!");
+			dbg->warning("obj_reader_t::finish_rd()","... failed!");
 			return false;
 		}
 	}
-
-	button_t::init_button_images();
 	return true;
 }
 
@@ -125,12 +105,12 @@ bool obj_reader_t::load(const char *path, const char *message)
 		// It takes the biggest power of 2 less than the number of elements and
 		// divides it in 256 sub-steps at most (the -7 comes from here)
 
-		const int max = find.search(path, "pak");
-		int step = -7;
-		for(long bit=1;  bit<max;  bit+=bit) {
-			step ++;
+		const sint32 max = find.search(path, "pak");
+		sint32 step = -7;
+		for(  sint32 bit = 1;  bit < max;  bit += bit  ) {
+			step++;
 		}
-		if(step<0) {
+		if(  step < 0  ) {
 			step = 0;
 		}
 		step = (2<<step)-1;

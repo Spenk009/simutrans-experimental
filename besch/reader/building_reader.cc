@@ -6,7 +6,7 @@
 #include "../intro_dates.h"
 #include "../obj_node_info.h"
 #include "building_reader.h"
-#include "../../dataobj/pakset_info.h"
+#include "../../network/pakset_info.h"
 
 
 obj_besch_t * tile_reader_t::read_node(FILE *fp, obj_node_info_t &node)
@@ -95,7 +95,7 @@ void building_reader_t::register_obj(obj_besch_t *&data)
 			besch->enables = 1|4;
 		}
 		else if(  strcmp("ShipStop",besch->get_name()+checkpos-8)==0  ) {
-			besch->utype = haus_besch_t::hafen;
+			besch->utype = haus_besch_t::dock;
 			besch->extra_data = water_wt;
 			besch->enables = 1|4;
 		}
@@ -148,7 +148,7 @@ void building_reader_t::register_obj(obj_besch_t *&data)
 		// compability stuff
 		static uint16 old_to_new_waytype[16] = { track_wt, road_wt, road_wt, water_wt, water_wt, air_wt, monorail_wt, 0, track_wt, road_wt, road_wt, 0 , water_wt, air_wt, monorail_wt, 0 };
 		besch->extra_data = besch->utype<=haus_besch_t::monorail_geb ? old_to_new_waytype[besch->utype-haus_besch_t::bahnhof] : 0;
-		if(  besch->utype!=haus_besch_t::hafen  ) {
+		if(  besch->utype!=haus_besch_t::dock  ) {
 			besch->utype = besch->utype<haus_besch_t::bahnhof_geb ? haus_besch_t::generic_stop : haus_besch_t::generic_extension;
 		}
 	}
@@ -258,10 +258,18 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		besch->allow_underground = decode_uint8(p);
 		if(experimental)
 		{
+			if(experimental_version > 2)
+			{
+				dbg->fatal( "building_reader_t::read_node()","Incompatible pak file version for Simutrans-Ex, number %i", experimental_version );
+			}
 			besch->is_control_tower = decode_uint8(p);
 			besch->population_and_visitor_demand_capacity = decode_uint16(p);
 			besch->employment_capacity = decode_uint16(p);
 			besch->mail_demand_and_production_capacity = decode_uint16(p);
+			if(experimental_version >= 1)
+			{
+				besch->radius = decode_uint32(p);
+			}
 		}
 		else
 		{
@@ -313,7 +321,7 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 			}
 		}
 
-		// From version 6, this is also in Standard.
+		// From version 7, this is also in Standard.
 		besch->allow_underground = decode_uint8(p);
 
 		if(experimental && experimental_version == 2)
@@ -502,10 +510,21 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 	if(!experimental)
 	{
 		// Set default levels for Experimental
-		besch->capacity = besch->level * 32;
+		if(version < 8)
+		{
+			besch->capacity = besch->level * 32;
+		}
 		// Old versions when read should allow underground stations, but not underground extension buildings.
-		besch->allow_underground = besch->utype == haus_besch_t::generic_stop ? 2 : 0; 
+		if(version < 7)
+		{
+			besch->allow_underground = besch->utype == haus_besch_t::generic_stop ? 2 : 0; 
+		}
 		besch->is_control_tower = 0;
+	}
+
+	if(!experimental || experimental_version < 1)
+	{
+		besch->radius = 0;
 	}
 
 	besch->scaled_maintenance = besch->maintenance;
@@ -530,6 +549,13 @@ obj_besch_t * building_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 	if(  version<=6  ) {
 		// only stops were allowed underground
 		besch->allow_underground = 255;
+	}
+
+	if(  version<=7  ) {
+		// capacity, maintenance and price were set from level
+		besch->capacity = besch->level * 32;
+		besch->maintenance = COST_MAGIC;
+		besch->price = COST_MAGIC;
 	}
 
 	if (besch->level == 65535) {

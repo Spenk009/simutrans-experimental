@@ -10,13 +10,13 @@
 #include "components/gui_label.h"
 
 class haus_besch_t;
-class wkz_build_haus_t;
+class tool_build_house_t;
 
 
 class citybuilding_edit_frame_t : public extend_edit_gui_t
 {
 private:
-	static wkz_build_haus_t haus_tool;
+	static tool_build_house_t haus_tool;
 	static char param_str[256];
 
 	const haus_besch_t *besch;
@@ -38,7 +38,7 @@ private:
 	virtual void change_item_info( sint32 i );
 
 public:
-	citybuilding_edit_frame_t(spieler_t* sp,karte_t* welt);
+	citybuilding_edit_frame_t(player_t* player);
 
 	/**
 	* in top-level windows the name is displayed in titlebar
@@ -52,7 +52,7 @@ public:
 	* @return the filename for the helptext, or NULL
 	* @author Hj. Malthaner
 	*/
-	const char* get_hilfe_datei() const { return "citybuilding_build.txt"; }
+	const char* get_help_filename() const { return "citybuilding_build.txt"; }
 
 	bool action_triggered(gui_action_creator_t*, value_t) OVERRIDE;
 };

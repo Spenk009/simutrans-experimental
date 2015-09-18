@@ -5,8 +5,10 @@
  */
 #include "../simdebug.h"
 
+#include "../simworld.h"
+
 #include "haus_besch.h"
-#include "../utils/checksum.h"
+#include "../network/checksum.h"
 
 
 
@@ -47,23 +49,24 @@ waytype_t haus_besch_t::get_finance_waytype() const
 {
 	switch( get_utyp() )
 	{
-		case haus_besch_t::bahnhof:      return track_wt;
-		case haus_besch_t::bushalt:      return road_wt;
-		case haus_besch_t::hafen:        return water_wt;
-		case haus_besch_t::binnenhafen:  return water_wt;
-		case haus_besch_t::airport:      return air_wt;
-		case haus_besch_t::monorailstop: return monorail_wt;
-		case haus_besch_t::bahnhof_geb:  return track_wt;
-		case haus_besch_t::bushalt_geb:  return road_wt;
-		case haus_besch_t::hafen_geb:    return water_wt;
+		case haus_besch_t::bahnhof:			return track_wt;
+		case haus_besch_t::bushalt:			return road_wt;
+		case haus_besch_t::dock:			return water_wt;
+		case haus_besch_t::flat_dock:		return water_wt;
+		case haus_besch_t::binnenhafen:		 return water_wt;
+		case haus_besch_t::airport:			return air_wt;
+		case haus_besch_t::monorailstop:	return monorail_wt;
+		case haus_besch_t::bahnhof_geb:		return track_wt;
+		case haus_besch_t::bushalt_geb:		return road_wt;
+		case haus_besch_t::hafen_geb:		return water_wt;
 		case haus_besch_t::binnenhafen_geb: return water_wt;
-		case haus_besch_t::airport_geb:  return air_wt;
-		case haus_besch_t::monorail_geb: return monorail_wt;
+		case haus_besch_t::airport_geb:		return air_wt;
+		case haus_besch_t::monorail_geb:	return monorail_wt;
 		case haus_besch_t::depot:
 		case haus_besch_t::generic_stop:
 		case haus_besch_t::generic_extension:
 			return (waytype_t) get_extra();
-		default: return ignore_wt;
+		default:							return ignore_wt;
 	}
 }
 
@@ -154,6 +157,7 @@ int haus_besch_t::layout_anpassen(int layout) const
 
 void haus_besch_t::calc_checksum(checksum_t *chk) const
 {
+	obj_besch_timelined_t::calc_checksum(chk);
 	chk->input((uint8)gtyp);
 	chk->input((uint8)utype);
 	chk->input(animation_time);
@@ -166,8 +170,6 @@ void haus_besch_t::calc_checksum(checksum_t *chk) const
 	chk->input(enables);
 	chk->input(chance);
 	chk->input((uint8)allowed_climates);
-	chk->input(intro_date);
-	chk->input(obsolete_date);
 	chk->input(maintenance);
 	chk->input(price);
 	chk->input(capacity);

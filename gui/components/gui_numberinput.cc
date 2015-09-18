@@ -12,23 +12,23 @@
 
 #include "../gui_frame.h"
 #include "gui_numberinput.h"
-#include "../../simwin.h"
-#include "../../simgraph.h"
+#include "../../gui/simwin.h"
+#include "../../display/simgraph.h"
 #include "../../macros.h"
 #include "../../dataobj/translator.h"
 
+#define ARROW_GAP (1)
 
 char gui_numberinput_t::tooltip[256];
 
-
 gui_numberinput_t::gui_numberinput_t() :
-	gui_komponente_t(true)
+	gui_component_t(true)
 {
 	bt_left.set_typ(button_t::repeatarrowleft );
 	bt_left.add_listener(this );
 
 	textinp.set_alignment( ALIGN_RIGHT );
-	textinp.set_color( COL_WHITE );
+	textinp.set_color( SYSCOL_TEXT_HIGHLIGHT );
 	textinp.add_listener( this );
 
 	bt_right.set_typ(button_t::repeatarrowright );
@@ -40,17 +40,19 @@ gui_numberinput_t::gui_numberinput_t() :
 	set_increment_mode( 1 );
 	wrap_mode( true );
 	b_enabled = true;
+
+	set_size( scr_size( D_BUTTON_WIDTH, D_EDIT_HEIGHT ) );
 }
 
+void gui_numberinput_t::set_size(scr_size size_par) {
 
-void gui_numberinput_t::set_groesse(koord gr)
-{
-	bt_left.set_pos( koord(0, (gr.y - bt_left.get_groesse().y) / 2) );
-	textinp.set_pos( koord( bt_left.get_groesse().x + 2, 0) );
-	textinp.set_groesse( koord( gr.x - bt_left.get_groesse().x - bt_right.get_groesse().x - 6, gr.y) );
-	bt_right.set_pos( koord( gr.x - bt_right.get_groesse().x - 2, (gr.y - bt_right.get_groesse().y) / 2) );
+	gui_component_t::set_size(size_par);
 
-	gui_komponente_t::groesse = gr;
+	textinp.set_size( scr_size( size_par.w - bt_left.get_size().w - bt_right.get_size().w, size_par.h) );
+	bt_left.align_to(&textinp, ALIGN_CENTER_V);
+	textinp.align_to(&bt_left, ALIGN_EXTERIOR_H | ALIGN_LEFT);
+	bt_right.align_to(&textinp, ALIGN_CENTER_V | ALIGN_EXTERIOR_H | ALIGN_LEFT);
+
 }
 
 
@@ -67,7 +69,7 @@ void gui_numberinput_t::set_value(sint32 new_value)
 		sprintf(textbuffer, "%d", new_value);
 		textinp.set_text(textbuffer, 20);
 	}
-	textinp.set_color( value == new_value ? (b_enabled ? COL_WHITE : COL_GREY3) : COL_RED );
+	textinp.set_color( value == new_value ? (b_enabled ? SYSCOL_TEXT_HIGHLIGHT : COL_GREY3) : COL_RED );
 	value = new_value;
 }
 
@@ -98,18 +100,18 @@ void gui_numberinput_t::set_limits(sint32 _min, sint32 _max)
 }
 
 
-bool gui_numberinput_t::action_triggered( gui_action_creator_t *komp, value_t /* */)
+bool gui_numberinput_t::action_triggered( gui_action_creator_t *comp, value_t /* */)
 {
-	if(  komp == &textinp  ) {
+	if(  comp == &textinp  ) {
 		// .. if enter / esc pressed
 		set_value( get_text_value() );
 		if(check_value(value)) {
 			call_listeners(value_t(value));
 		}
 	}
-	else if(  komp == &bt_left  ||  komp == &bt_right  ) {
+	else if(  comp == &bt_left  ||  comp == &bt_right  ) {
 		// value changed and feasible
-		sint32 new_value = (komp == &bt_left) ? get_prev_value() : get_next_value();
+		sint32 new_value = (comp == &bt_left) ? get_prev_value() : get_next_value();
 		if(  new_value!=value  ) {
 			set_value( new_value );
 			if(check_value(new_value)) {
@@ -225,12 +227,12 @@ void gui_numberinput_t::init( sint32 value, sint32 min, sint32 max, sint32 mode,
 bool gui_numberinput_t::infowin_event(const event_t *ev)
 {
 	// buttons pressed
-	if(  bt_left.getroffen(ev->cx, ev->cy)  &&  ev->ev_code == MOUSE_LEFTBUTTON  ) {
+	if(  bt_left.is_hit(ev->cx, ev->cy)  &&  ev->ev_code == MOUSE_LEFTBUTTON  ) {
 		event_t ev2 = *ev;
 		translate_event(&ev2, -bt_left.get_pos().x, -bt_left.get_pos().y);
 		return bt_left.infowin_event(&ev2);
 	}
-	else if(  bt_right.getroffen(ev->cx, ev->cy)  &&  ev->ev_code == MOUSE_LEFTBUTTON  ) {
+	else if(  bt_right.is_hit(ev->cx, ev->cy)  &&  ev->ev_code == MOUSE_LEFTBUTTON  ) {
 		event_t ev2 = *ev;
 		translate_event(&ev2, -bt_right.get_pos().x, -bt_right.get_pos().y);
 		return bt_right.infowin_event(&ev2);
@@ -321,16 +323,16 @@ bool gui_numberinput_t::infowin_event(const event_t *ev)
  * Draw the component
  * @author Dwachs
  */
-void gui_numberinput_t::zeichnen(koord offset)
+void gui_numberinput_t::draw(scr_coord offset)
 {
-	koord new_offset = pos+offset;
-	bt_left.zeichnen(new_offset);
+	scr_coord new_offset = pos+offset;
 
+	bt_left.draw(new_offset);
 	textinp.display_with_focus( new_offset, (win_get_focus()==this) );
-	bt_right.zeichnen(new_offset);
+	bt_right.draw(new_offset);
 
-	if(getroffen( get_maus_x()-offset.x, get_maus_y()-offset.y )) {
+	if(is_hit( get_maus_x()-offset.x, get_maus_y()-offset.y )) {
 		sprintf( tooltip, translator::translate("enter a value between %i and %i"), min_value, max_value );
-		win_set_tooltip(get_maus_x() + 16, new_offset.y + groesse.y + 12, tooltip, this);
+		win_set_tooltip(get_maus_x() + TOOLTIP_MOUSE_OFFSET_X, new_offset.y + size.h + TOOLTIP_MOUSE_OFFSET_Y, tooltip, this);
 	}
 }

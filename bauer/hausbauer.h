@@ -14,9 +14,9 @@
 #include "../tpl/vector_tpl.h"
 
 class gebaeude_t;
-class karte_t;
-class spieler_t;
-class werkzeug_waehler_t;
+class karte_ptr_t;
+class player_t;
+class tool_selector_t;
 
 /**
  * Diese Klasse übernimmt den Bau von mehrteiligen Gebäuden. Sie kennt die
@@ -35,13 +35,14 @@ private:
 	static vector_tpl<const haus_besch_t*> denkmaeler;
 	static vector_tpl<const haus_besch_t*> ungebaute_denkmaeler;
 
+	static karte_ptr_t welt;
 public:
 	/**
 	 * Gebäude, die das Programm direkt kennen muß
 	 */
 	static const haus_besch_t* elevated_foundation_besch;
 
-	// to allow for an arbitary number, we use lists
+	// to allow for an arbitrary number, we use lists
 	static vector_tpl<const haus_besch_t*> station_building;
 	static vector_tpl<haus_besch_t*> modifiable_station_buildings;
 
@@ -65,6 +66,8 @@ public:
 
 	static const haus_tile_besch_t* find_tile(const char* name, int idx);
 
+	static const haus_besch_t* get_besch(const char *name);
+
 	static bool register_besch(haus_besch_t *besch);
 	static bool alles_geladen();
 
@@ -72,7 +75,7 @@ public:
 	 * this is only needed for stations and depots => use waytype too!
 	 * @author prissi
 	 */
-	static void fill_menu(werkzeug_waehler_t* wzw, haus_besch_t::utyp, waytype_t wt, sint16 sound_ok, const karte_t* welt);
+	static void fill_menu(tool_selector_t* tool_selector, haus_besch_t::utyp, waytype_t wt, sint16 sound_ok);
 
 	/**
 	 * Gewerbegebäude passend zum Level liefern. Zur Zeit sind die Einträge
@@ -96,7 +99,7 @@ public:
 	static const haus_besch_t* get_residential(int level, uint16 time, climate cl, bool allow_earlier = false, uint32 clusters = 0l);
 
 	/**
-	 * Returns Headquarter with Level level
+	 * Returns Headquarters with Level level
 	 * (takes the first matching one)
 	 * @author Dwachs
 	 */
@@ -145,25 +148,25 @@ public:
 	 */
 	static const haus_besch_t* get_special(uint32 bev, haus_besch_t::utyp utype, uint16 time, bool ignore_retire, climate cl);
 
-	/* use this to remove an arbitary building
+	/* use this to remove an arbitrary building
 	 * it will also take care of factories and foundations
 	 */
-	static void remove( karte_t *welt, spieler_t *sp, gebaeude_t *gb );
+	static void remove( player_t *player, gebaeude_t *gb );
 
-	/* Main function for all non-traffic buildings, including factories
+	/* Main function for all non-traffic buildings, including factories and signalboxes
 	 * building size can be larger than 1x1
 	 * Also the underlying ground will be changed to foundation.
 	 * @return The first built part of the building. Usually at pos, if this
 	 *         part is not empty.
 	 * @author V. Meyer
 	 */
-	static gebaeude_t* baue(karte_t* welt, spieler_t* sp, koord3d pos, int layout, const haus_besch_t* besch, void* param = NULL);
+	static gebaeude_t* baue(player_t* player, koord3d pos, int layout, const haus_besch_t* besch, void* param = NULL);
 
 	/* build all kind of stops and depots
 	 * The building size must be 1x1
 	 * may change the layout of neighbouring buildings, if layout>4 and station
 	 */
-	static gebaeude_t* neues_gebaeude(karte_t* welt, spieler_t* sp, koord3d pos, int layout, const haus_besch_t* besch, void* param = NULL);
+	static gebaeude_t* neues_gebaeude(player_t* player, koord3d pos, int layout, const haus_besch_t* besch, void* param = NULL);
 
 	// currently only used for edit menu
 	static const vector_tpl<const haus_besch_t *> *get_list( haus_besch_t::utyp typ );

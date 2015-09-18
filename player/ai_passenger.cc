@@ -8,11 +8,12 @@
 /* simple passenger AI (not using trains, not preoptimized network) */
 
 #include "../simcity.h"
+#include "../simconvoi.h"
 #include "../simfab.h"
 #include "../simhalt.h"
 #include "../simline.h"
 #include "../simmenu.h"
-#include "../simtools.h"
+#include "../utils/simrandom.h"
 #include "../simmesg.h"
 #include "../simworld.h"
 
@@ -24,11 +25,12 @@
 
 #include "../dataobj/fahrplan.h"
 #include "../dataobj/loadsave.h"
+#include "../dataobj/marker.h"
 
 #include "../utils/cbuffer_t.h"
 #include "../utils/simstring.h"
 
-#include "../vehicle/simvehikel.h"
+#include "../vehicle/simvehicle.h"
 
 #include "ai_passenger.h"
 #include "finance.h"
@@ -64,7 +66,7 @@ bool ai_passenger_t::set_active(bool new_state)
 	if(  new_state  ) {
 		new_state = NULL!=vehikel_search( road_wt, 50, 80, warenbauer_t::passagiere, false);
 	}
-	return spieler_t::set_active( new_state );
+	return player_t::set_active( new_state );
 }
 
 
@@ -73,8 +75,8 @@ bool ai_passenger_t::set_active(bool new_state)
  */
 halthandle_t ai_passenger_t::get_our_hub( const stadt_t *s ) const
 {
-	FOR(slist_tpl<halthandle_t>, const halt, haltestelle_t::get_alle_haltestellen()) {
-		if(  halt->get_besitzer()==(const spieler_t *)this  ) {
+	FOR(vector_tpl<halthandle_t>, const halt, haltestelle_t::get_alle_haltestellen()) {
+		if (halt->get_owner() == sim::up_cast<player_t const*>(this)) {
 			if(  halt->get_pax_enabled()  &&  (halt->get_station_type()&haltestelle_t::busstop)!=0  ) {
 				koord h=halt->get_basis_pos();
 				if(h.x>=s->get_linksoben().x  &&  h.y>=s->get_linksoben().y  &&  h.x<=s->get_rechtsunten().x  &&  h.y<=s->get_rechtsunten().y  ) {
@@ -101,10 +103,10 @@ koord ai_passenger_t::find_area_for_hub( const koord lo, const koord ru, const k
 			if(gr) {
 				// flat, solid
 				if(  gr->get_typ()==grund_t::boden  &&  gr->get_grund_hang()==hang_t::flach  ) {
-					const ding_t* thing = gr->obj_bei(0);
+					const obj_t* obj = gr->obj_bei(0);
 					int test_dist = shortest_distance( trypos, basis );
-					if (!thing || !thing->get_besitzer() || thing->get_besitzer() == sim::up_cast<spieler_t const*>(this)) {
-						if(  gr->is_halt()  &&  check_owner( gr->get_halt()->get_besitzer(), this )  &&  gr->hat_weg(road_wt)  ) {
+					if (!obj || !obj->get_owner() || obj->get_owner() == sim::up_cast<player_t const*>(this)) {
+						if(  gr->is_halt()  &&  check_owner( gr->get_halt()->get_owner(), this )  &&  gr->hat_weg(road_wt)  ) {
 							// ok, one halt belongs already to us ... (should not really happen!) but might be a public stop
 							return trypos;
 						} else if(  test_dist<dist  &&  gr->hat_weg(road_wt)  &&  !gr->is_halt()  ) {
@@ -159,7 +161,7 @@ koord ai_passenger_t::find_harbour_pos(karte_t* welt, const stadt_t *s )
 				if(  testdist<bestdist  ) {
 					grund_t *gr = welt->lookup_kartenboden(k);
 					hang_t::typ hang = gr->get_grund_hang();
-					if(gr->ist_natur()  &&  gr->get_hoehe()==welt->get_grundwasser()  &&  hang_t::ist_wegbar(hang)  &&  welt->ist_wasser(k-koord(hang),koord(hang)*4+koord(1,1))  ) {
+					if(  gr->ist_natur()  &&  gr->get_hoehe() == welt->get_water_hgt(k)  &&  hang_t::ist_wegbar(hang)  &&  welt->ist_wasser( k - koord(hang), koord(hang) * 4 + koord(1, 1) )  ) {
 						// can built busstop here?
 						koord bushalt = k+koord(hang);
 						gr = welt->lookup_kartenboden(bushalt);
@@ -271,10 +273,10 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 	{
 		// we use the free own vehikel_besch_t
 		vehikel_besch_t remover_besch( water_wt, 500, vehikel_besch_t::diesel );
-		vehikel_t* test_driver = vehikelbauer_t::baue( koord3d(start_harbour-start_dx,welt->get_grundwasser()), this, NULL, &remover_besch );
-		test_driver->set_flag( ding_t::not_on_map );
+		vehicle_t* test_driver = vehikelbauer_t::baue( koord3d( start_harbour - start_dx, welt->get_water_hgt( start_harbour - start_dx ) ), this, NULL, &remover_besch );
+		test_driver->set_flag( obj_t::not_on_map );
 		route_t verbindung;
-		bool connected = verbindung.calc_route(welt, koord3d(start_harbour-start_dx,welt->get_grundwasser()), koord3d(end_harbour-end_dx,welt->get_grundwasser()), test_driver, 0, 0, 0);
+		bool connected = verbindung.calc_route( welt, koord3d( start_harbour - start_dx, welt->get_water_hgt( start_harbour - start_dx ) ), koord3d( end_harbour - end_dx, welt->get_water_hgt( end_harbour - end_dx ) ), test_driver, 0, 0, 0 );
 		delete test_driver;
 		if(!connected) {
 			return false;
@@ -287,7 +289,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 		const koord town_road = find_place_for_hub( start_stadt );
 		// first: built street to harbour
 		if(town_road!=bushalt) {
-			wegbauer_t bauigel(welt, this);
+			wegbauer_t bauigel(this);
 			// no bridges => otherwise first tile might be bridge start ...
 			bauigel.route_fuer( wegbauer_t::strasse, wegbauer_t::weg_search( road_wt, road_vehicle->get_geschw(), road_vehicle->get_gewicht(), welt->get_timeline_year_month(), weg_t::type_flat ), tunnelbauer_t::find_tunnel(road_wt,road_vehicle->get_geschw(),welt->get_timeline_year_month()), NULL );
 			bauigel.set_keep_existing_faster_ways(true);
@@ -305,7 +307,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 		const koord town_road = find_place_for_hub( end_stadt );
 		// first: built street to harbour
 		if(town_road!=bushalt) {
-			wegbauer_t bauigel(welt, this);
+			wegbauer_t bauigel(this);
 			// no bridges => otherwise first tile might be bridge start ...
 			bauigel.route_fuer( wegbauer_t::strasse, wegbauer_t::weg_search( road_wt, road_vehicle->get_geschw(), road_vehicle->get_gewicht(), welt->get_timeline_year_month(), weg_t::type_flat ), tunnelbauer_t::find_tunnel(road_wt,road_vehicle->get_geschw(),welt->get_timeline_year_month()), NULL );
 			bauigel.set_keep_existing_faster_ways(true);
@@ -326,7 +328,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 		koord bushalt = start_harbour+start_dx;
 		const haus_besch_t* busstop_besch = hausbauer_t::get_random_station(haus_besch_t::generic_stop, road_wt, welt->get_timeline_year_month(), haltestelle_t::PAX );
 		// now built the bus stop
-		if(!call_general_tool( WKZ_STATION, bushalt, busstop_besch->get_name() )) {
+		if(!call_general_tool( TOOL_BUILD_STATION, bushalt, busstop_besch->get_name() )) {
 			return false;
 		}
 		// and change name to dock ...
@@ -338,16 +340,16 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 			free(name);
 		}
 		// finally built the dock
-		const haus_besch_t* dock_besch = hausbauer_t::get_random_station(haus_besch_t::hafen, water_wt, welt->get_timeline_year_month(), 0);
+		const haus_besch_t* dock_besch = hausbauer_t::get_random_station(haus_besch_t::dock, water_wt, welt->get_timeline_year_month(), 0);
 		welt->lookup_kartenboden(start_harbour)->obj_loesche_alle(this);
-		call_general_tool( WKZ_STATION, start_harbour, dock_besch->get_name() );
+		call_general_tool( TOOL_BUILD_STATION, start_harbour, dock_besch->get_name() );
 		grund_t *harbour_gr = welt->lookup_kartenboden(start_harbour);
 		start_hub = harbour_gr ? harbour_gr->get_halt() : halthandle_t();
 		// eventually we must built a hub in the next town
 		start_connect_hub = get_our_hub( start_stadt );
 		if(!start_connect_hub.is_bound()) {
 			koord sch = find_place_for_hub( start_stadt );
-			call_general_tool( WKZ_STATION, sch, busstop_besch->get_name() );
+			call_general_tool( TOOL_BUILD_STATION, sch, busstop_besch->get_name() );
 			start_connect_hub = get_our_hub( start_stadt );
 			assert( start_connect_hub.is_bound() );
 		}
@@ -359,7 +361,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 		koord bushalt = end_harbour+end_dx;
 		const haus_besch_t* busstop_besch = hausbauer_t::get_random_station(haus_besch_t::generic_stop, road_wt, welt->get_timeline_year_month(), haltestelle_t::PAX );
 		// now built the bus stop
-		if(!call_general_tool( WKZ_STATION, bushalt, busstop_besch->get_name() )) {
+		if(!call_general_tool( TOOL_BUILD_STATION, bushalt, busstop_besch->get_name() )) {
 			return false;
 		}
 		// and change name to dock ...
@@ -371,16 +373,16 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 			free(name);
 		}
 		// finally built the dock
-		const haus_besch_t* dock_besch = hausbauer_t::get_random_station(haus_besch_t::hafen, water_wt, welt->get_timeline_year_month(), 0 );
+		const haus_besch_t* dock_besch = hausbauer_t::get_random_station(haus_besch_t::dock, water_wt, welt->get_timeline_year_month(), 0 );
 		welt->lookup_kartenboden(end_harbour)->obj_loesche_alle(this);
-		call_general_tool( WKZ_STATION, end_harbour, dock_besch->get_name() );
+		call_general_tool( TOOL_BUILD_STATION, end_harbour, dock_besch->get_name() );
 		grund_t *harbour_gr = welt->lookup_kartenboden(end_harbour);
 		end_hub = harbour_gr ? harbour_gr->get_halt() : halthandle_t();
 		// eventually we must built a hub in the next town
 		end_connect_hub = get_our_hub( end_stadt );
 		if(!end_connect_hub.is_bound()) {
 			koord ech = find_place_for_hub( end_stadt );
-			call_general_tool( WKZ_STATION, ech, busstop_besch->get_name() );
+			call_general_tool( TOOL_BUILD_STATION, ech, busstop_besch->get_name() );
 			end_connect_hub = get_our_hub( end_stadt );
 			assert( end_connect_hub.is_bound() );
 		}
@@ -393,7 +395,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 	for (int y = pos1.y - cov; y <= pos1.y + cov; ++y) {
 		for (int x = pos1.x - cov; x <= pos1.x + cov; ++x) {
 			koord p(x,y);
-			const planquadrat_t *plan = welt->lookup(p);
+			const planquadrat_t *plan = welt->access(p);
 			if(plan) {
 				grund_t *gr = plan->get_kartenboden();
 				if(  gr->ist_wasser()  &&  !gr->get_halt().is_bound()  ) {
@@ -410,7 +412,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 	for (int y = pos1.y - cov; y <= pos1.y + cov; ++y) {
 		for (int x = pos1.x - cov; x <= pos1.x + cov; ++x) {
 			koord p(x,y);
-			const planquadrat_t *plan = welt->lookup(p);
+			const planquadrat_t *plan = welt->access(p);
 			if(plan) {
 				grund_t *gr = plan->get_kartenboden();
 				if(  gr->ist_wasser()  &&  !gr->get_halt().is_bound()  ) {
@@ -432,7 +434,7 @@ bool ai_passenger_t::create_water_transport_vehikel(const stadt_t* start_stadt, 
 	delete fpl;
 
 	// now create one ship
-	vehikel_t* v = vehikelbauer_t::baue( koord3d(start_pos,welt->get_grundwasser()), this, NULL, v_besch);
+	vehicle_t* v = vehikelbauer_t::baue( koord3d( start_pos, welt->get_water_hgt( start_pos ) ), this, NULL, v_besch );
 	convoi_t* cnv = new convoi_t(this);
 	cnv->set_name(v->get_besch()->get_name());
 	cnv->add_vehikel( v );
@@ -488,7 +490,7 @@ halthandle_t ai_passenger_t::build_airport(const stadt_t* city, koord pos, int r
 		return halthandle_t();
 	}
 	// ok, now we could built it => flatten the land
-	sint8 h = max( welt->get_grundwasser()+1, welt->lookup_kartenboden(pos)->get_hoehe() );
+	sint8 h = max( welt->get_water_hgt(pos) + 1, welt->lookup_kartenboden(pos)->get_hoehe() );
 	const koord dx( size.x/2, size.y/2 );
 	for(  sint16 i=0;  i!=size.y+dx.y;  i+=dx.y  ) {
 		for( sint16 j=0;  j!=size.x+dx.x;  j+=dx.x  ) {
@@ -498,7 +500,7 @@ halthandle_t ai_passenger_t::build_airport(const stadt_t* city, koord pos, int r
 		}
 	}
 	// now taxiways
-	wegbauer_t bauigel(welt, this);
+	wegbauer_t bauigel(this);
 	// 3x3 layout, first we make the taxiway cross
 	koord center=pos+dx;
 	bauigel.route_fuer( wegbauer_t::luft, taxi_besch, NULL, NULL );
@@ -548,7 +550,7 @@ halthandle_t ai_passenger_t::build_airport(const stadt_t* city, koord pos, int r
 	const haus_besch_t* busstop_besch = hausbauer_t::get_random_station(haus_besch_t::generic_stop, road_wt, welt->get_timeline_year_month(), haltestelle_t::PAX );
 	// get an airport name (even though the hub is the bus stop ... )
 	// now built the bus stop
-	if(!call_general_tool( WKZ_STATION, bushalt, busstop_besch->get_name() )) {
+	if(!call_general_tool( TOOL_BUILD_STATION, bushalt, busstop_besch->get_name() )) {
 		welt->lookup_kartenboden(center+koord::nord)->remove_everything_from_way( this, air_wt, ribi_t::keine );
 		welt->lookup_kartenboden(center+koord::sued)->remove_everything_from_way( this, air_wt, ribi_t::keine );
 		welt->lookup_kartenboden(center+koord::west)->remove_everything_from_way( this, air_wt, ribi_t::keine );
@@ -573,13 +575,13 @@ halthandle_t ai_passenger_t::build_airport(const stadt_t* city, koord pos, int r
 	const haus_besch_t* airstop_besch = hausbauer_t::get_random_station(haus_besch_t::generic_stop, air_wt, welt->get_timeline_year_month(), 0 );
 	for(  int i=0;  i<4;  i++  ) {
 		if(  shortest_distance(center+koord::nsow[i],bushalt)==1  &&  ribi_t::ist_einfach( welt->lookup_kartenboden(center+koord::nsow[i])->get_weg_ribi_unmasked(air_wt) )  ) {
-			call_general_tool( WKZ_STATION, center+koord::nsow[i], airstop_besch->get_name() );
+			call_general_tool( TOOL_BUILD_STATION, center+koord::nsow[i], airstop_besch->get_name() );
 		}
 	}
 	// and now the one far away ...
 	for(  int i=0;  i<4;  i++  ) {
 		if(  shortest_distance(center+koord::nsow[i],bushalt)>1  &&  ribi_t::ist_einfach( welt->lookup_kartenboden(center+koord::nsow[i])->get_weg_ribi_unmasked(air_wt) )  ) {
-			call_general_tool( WKZ_STATION, center+koord::nsow[i], airstop_besch->get_name() );
+			call_general_tool( TOOL_BUILD_STATION, center+koord::nsow[i], airstop_besch->get_name() );
 		}
 	}
 	// sucess
@@ -702,7 +704,7 @@ bool ai_passenger_t::create_air_transport_vehikel(const stadt_t *start_stadt, co
 				koord sch = find_place_for_hub( start_stadt );
 				// probably we must construct a city hub, since the airport is outside of the city limits
 				const haus_besch_t* busstop_besch = hausbauer_t::get_random_station(haus_besch_t::generic_stop, road_wt, welt->get_timeline_year_month(), haltestelle_t::PAX );
-				call_general_tool( WKZ_STATION, sch, busstop_besch->get_name() );
+				call_general_tool( TOOL_BUILD_STATION, sch, busstop_besch->get_name() );
 				start_connect_hub = get_our_hub( start_stadt );
 				assert( start_connect_hub.is_bound() );
 			}
@@ -732,7 +734,7 @@ bool ai_passenger_t::create_air_transport_vehikel(const stadt_t *start_stadt, co
 				koord ech = find_place_for_hub( end_stadt );
 				// probably we must construct a city hub, since the airport is outside of the city limits
 				const haus_besch_t* busstop_besch = hausbauer_t::get_random_station(haus_besch_t::generic_stop, road_wt, welt->get_timeline_year_month(), haltestelle_t::PAX );
-				call_general_tool( WKZ_STATION, ech, busstop_besch->get_name() );
+				call_general_tool( TOOL_BUILD_STATION, ech, busstop_besch->get_name() );
 				end_connect_hub = get_our_hub( end_stadt );
 				assert( end_connect_hub.is_bound() );
 			}
@@ -752,7 +754,7 @@ bool ai_passenger_t::create_air_transport_vehikel(const stadt_t *start_stadt, co
 	delete fpl;
 
 	// now create one plane
-	vehikel_t* v = vehikelbauer_t::baue( start->get_pos(), this, NULL, v_besch);
+	vehicle_t* v = vehikelbauer_t::baue( start->get_pos(), this, NULL, v_besch);
 	convoi_t* cnv = new convoi_t(this);
 	cnv->set_name(v->get_besch()->get_name());
 	cnv->add_vehikel( v );
@@ -798,7 +800,7 @@ DBG_MESSAGE("ai_passenger_t::create_bus_transport_vehikel()","bus at (%i,%i)",st
 
 	// now create all vehicles as convois
 	for(int i=0;  i<anz_vehikel;  i++) {
-		vehikel_t* v = vehikelbauer_t::baue(startpos, this, NULL, road_vehicle);
+		vehicle_t* v = vehikelbauer_t::baue(startpos, this, NULL, road_vehicle);
 		if(  convoihandle_t::is_exhausted()  ) {
 			// too many convois => cannot do anything about this ...
 			return;
@@ -836,10 +838,10 @@ void ai_passenger_t::walk_city(linehandle_t const line, grund_t* const start, in
 
 		// ok, if connected, not marked, and not owner by somebody else
 		grund_t *to;
-		if(  start->get_neighbour(to, road_wt, ribi_t::nsow[r] )  &&  !welt->ist_markiert(to)  &&  check_owner(to->obj_bei(0)->get_besitzer(),this)  ) {
+		if(  start->get_neighbour(to, road_wt, ribi_t::nsow[r] )  &&  !marker->is_marked(to)  &&  check_owner(to->obj_bei(0)->get_owner(),this)  ) {
 
 			// ok, here is a valid street tile
-			welt->markiere(to);
+			marker->mark(to);
 
 			// can built a station here
 			if(  ribi_t::ist_gerade(to->get_weg_ribi(road_wt))  ) {
@@ -850,7 +852,7 @@ void ai_passenger_t::walk_city(linehandle_t const line, grund_t* const start, in
 				uint16 const cov = welt->get_settings().get_station_coverage();
 				for (sint16 y = to->get_pos().y - cov; y <= to->get_pos().y + cov + 1; ++y) {
 					for (sint16 x = to->get_pos().x - cov; x <= to->get_pos().x + cov + 1; ++x) {
-						const planquadrat_t *pl = welt->lookup(koord(x,y));
+						const planquadrat_t *pl = welt->access(koord(x,y));
 						// check, if we have a passenger stop already here
 						if(pl  &&  pl->get_haltlist_count()>0) {
 							const nearby_halt_t *hl = pl->get_haltlist();
@@ -859,9 +861,9 @@ void ai_passenger_t::walk_city(linehandle_t const line, grund_t* const start, in
 									// our stop => nothing to do
 #if AUTOJOIN_PUBLIC
 									// we leave also public stops alone
-									if(  hl[own].halt->get_besitzer()==this  ||  hl[own]->get_besitzer()==welt->get_spieler(1)  ) {
+									if(  hl[own].halt->get_owner()==this  ||  hl[own]->get_owner()==welt->get_player(1)  ) {
 #else
-									if(  hl[own].halt->get_besitzer()==this  ) {
+									if(  hl[own].halt->get_owner()==this  ) {
 #endif
 										covered_tiles ++;
 										break;
@@ -881,7 +883,7 @@ void ai_passenger_t::walk_city(linehandle_t const line, grund_t* const start, in
 				if(  covered_tiles<(max_tiles*max_tiles)/3  &&  house_tiles>=3  ) {
 					// ok, lets do it
 					const haus_besch_t* bs = hausbauer_t::get_random_station(haus_besch_t::generic_stop, road_wt, welt->get_timeline_year_month(), haltestelle_t::PAX);
-					if(  call_general_tool( WKZ_STATION, to->get_pos().get_2d(), bs->get_name() )  ) {
+					if(  call_general_tool( TOOL_BUILD_STATION, to->get_pos().get_2d(), bs->get_name() )  ) {
 						//add to line
 						line->get_schedule()->append(to,0); // no need to register it yet; done automatically, when convois will be assinged
 					}
@@ -909,7 +911,7 @@ void ai_passenger_t::cover_city_with_bus_route(koord start_pos, int number_of_st
 	}
 
 	// nothing in lists
-	welt->unmarkiere_alle();
+	marker = &marker_t::instance(welt->get_size().x, welt->get_size().y);
 
 	// and init all stuff for recursion
 	grund_t *start = welt->lookup_kartenboden(start_pos);
@@ -923,7 +925,7 @@ void ai_passenger_t::cover_city_with_bus_route(koord start_pos, int number_of_st
 	road_vehicle = vehikel_search( road_wt, 1, 50, warenbauer_t::passagiere, false);
 	if( line->get_schedule()->get_count()>1  ) {
 		// success: add a bus to the line
-		vehikel_t* v = vehikelbauer_t::baue(start->get_pos(), this, NULL, road_vehicle);
+		vehicle_t* v = vehikelbauer_t::baue(start->get_pos(), this, NULL, road_vehicle);
 		convoi_t* cnv = new convoi_t(this);
 
 		cnv->set_name(v->get_besch()->get_name());
@@ -936,15 +938,16 @@ void ai_passenger_t::cover_city_with_bus_route(koord start_pos, int number_of_st
 	else {
 		simlinemgmt.delete_line( line );
 	}
+	marker = NULL;
 }
 
 
 void ai_passenger_t::step()
 {
 	// needed for schedule of stops ...
-	spieler_t::step();
+	player_t::step();
 
-	if(!automat) {
+	if(!active) {
 		// I am off ...
 		return;
 	}
@@ -1013,7 +1016,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","searching attraction");
 					koord pos, size;
 					if(ausflug) {
 						const gebaeude_t* a = ausflugsziele[i];
-						if (a->get_mail_demand() <= 25) {
+						if (a->get_adjusted_mail_demand() <= 25) {
 							// not a good object to go to ...
 							continue;
 						}
@@ -1152,16 +1155,16 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 				// since the road my have led to a crossing at the indended stop position ...
 				bool ok = true;
 				if(  !get_halt(platz1).is_bound()  ) {
-					if(  !call_general_tool( WKZ_STATION, platz1, bs->get_name() )  ) {
+					if(  !call_general_tool( TOOL_BUILD_STATION, platz1, bs->get_name() )  ) {
 						platz1 = find_area_for_hub( platz1-koord(2,2), platz1+koord(2,2), platz1 );
-						ok = call_general_tool( WKZ_STATION, platz1, bs->get_name() );
+						ok = call_general_tool( TOOL_BUILD_STATION, platz1, bs->get_name() );
 					}
 				}
 				if(  ok  ) {
 					if(  !get_halt(platz2).is_bound()  ) {
-						if(  !call_general_tool( WKZ_STATION, platz2, bs->get_name() )  ) {
+						if(  !call_general_tool( TOOL_BUILD_STATION, platz2, bs->get_name() )  ) {
 							platz2 = find_area_for_hub( platz2-koord(2,2), platz2+koord(2,2), platz2 );
-							ok = call_general_tool( WKZ_STATION, platz2, bs->get_name() );
+							ok = call_general_tool( TOOL_BUILD_STATION, platz2, bs->get_name() );
 						}
 					}
 				}
@@ -1189,7 +1192,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 						cover_city_with_bus_route(platz1, 6);
 						cover_city_with_bus_route(platz2, 6);
 					}
-					welt->get_message()->add_message(buf, platz1, message_t::ai, PLAYER_FLAG|player_nr, road_vehicle->get_basis_bild());
+					welt->get_message()->add_message(buf, platz1, message_t::ai, PLAYER_FLAG|player_nr, road_vehicle->get_base_image());
 				}
 			}
 		}
@@ -1214,7 +1217,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 				}
 				cbuffer_t buf;
 				buf.printf( translator::translate("Ferry service by\n%s\nnow between\n%s \nand %s.\n"), get_name(), start_stadt->get_name(), end_stadt->get_name() );
-				welt->get_message()->add_message(buf, end_stadt->get_pos(), message_t::ai, PLAYER_FLAG | player_nr, road_vehicle->get_basis_bild());
+				welt->get_message()->add_message(buf, end_stadt->get_pos(), message_t::ai, PLAYER_FLAG | player_nr, road_vehicle->get_base_image());
 				state = NR_SUCCESS;
 			}
 			else {
@@ -1241,7 +1244,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 				cover_city_with_bus_route( get_our_hub(end_stadt)->get_basis_pos(), 6);
 				cbuffer_t buf;
 				buf.printf( translator::translate("Airline service by\n%s\nnow between\n%s \nand %s.\n"), get_name(), start_stadt->get_name(), end_stadt->get_name() );
-				welt->get_message()->add_message(buf, end_stadt->get_pos(), message_t::ai, PLAYER_FLAG | player_nr, road_vehicle->get_basis_bild());
+				welt->get_message()->add_message(buf, end_stadt->get_pos(), message_t::ai, PLAYER_FLAG | player_nr, road_vehicle->get_base_image());
 				state = NR_SUCCESS;
 			}
 		break;
@@ -1302,7 +1305,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 						}
 						if(capacity>0) {
 							// now try to finde new vehicle
-							vehikel_t              const& v       = *line->get_convoy(0)->front();
+							vehicle_t              const& v       = *line->get_convoy(0)->front();
 							waytype_t              const  wt      = v.get_waytype();
 							vehikel_besch_t const* const  v_besch = vehikelbauer_t::vehikel_search(wt, welt->get_current_month(), 50, welt->get_average_speed(wt), warenbauer_t::passagiere, false, true);
 							if (!v_besch->is_retired(welt->get_current_month()) && v_besch != v.get_besch()) {
@@ -1312,7 +1315,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 										// too many convois => cannot do anything about this ...
 										break;
 									}
-									vehikel_t* v = vehikelbauer_t::baue( line->get_schedule()->eintrag[0].pos, this, NULL, v_besch  );
+									vehicle_t* v = vehikelbauer_t::baue( line->get_schedule()->eintrag[0].pos, this, NULL, v_besch  );
 									convoi_t* new_cnv = new convoi_t(this);
 									new_cnv->set_name( v->get_besch()->get_name() );
 									new_cnv->add_vehikel( v );
@@ -1343,7 +1346,7 @@ DBG_MESSAGE("ai_passenger_t::do_passenger_ki()","using %s on %s",road_vehicle->g
 				// next: check for overflowing lines, i.e. running with 3/4 of the capacity
 				if(  ratio<10  &&  !convoihandle_t::is_exhausted()  ) {
 					// else add the first convoi again
-					vehikel_t* const v = vehikelbauer_t::baue(line->get_schedule()->eintrag[0].pos, this, NULL, line->get_convoy(0)->front()->get_besch());
+					vehicle_t* const v = vehikelbauer_t::baue(line->get_schedule()->eintrag[0].pos, this, NULL, line->get_convoy(0)->front()->get_besch());
 					convoi_t* new_cnv = new convoi_t(this);
 					new_cnv->set_name( v->get_besch()->get_name() );
 					new_cnv->add_vehikel( v );
@@ -1381,7 +1384,7 @@ void ai_passenger_t::rdwr(loadsave_t *file)
 {
 	if(  file->get_version()<102002  ) {
 		// due to an error the player was never saved correctly
-		spieler_t::rdwr(file);
+		player_t::rdwr(file);
 		return;
 	}
 
@@ -1437,7 +1440,7 @@ void ai_passenger_t::rdwr(loadsave_t *file)
 		k3d.rdwr(file);
 		end_ausflugsziel = welt->lookup(k3d) ? welt->lookup(k3d)->find<gebaeude_t>() : NULL;
 		k3d.rdwr(file);
-		ziel = fabrik_t::get_fab( welt, k3d.get_2d() );
+		ziel = fabrik_t::get_fab(k3d.get_2d() );
 	}
 }
 
@@ -1450,18 +1453,18 @@ void ai_passenger_t::rdwr(loadsave_t *file)
  * @author prissi
  * @date 30-Dec-2008
  */
-void ai_passenger_t::bescheid_vehikel_problem(convoihandle_t cnv,const koord3d ziel)
+void ai_passenger_t::report_vehicle_problem(convoihandle_t cnv,const koord3d ziel)
 {
 	if(  cnv->get_state() == convoi_t::NO_ROUTE  &&  this!=welt->get_active_player()  ) {
-			DBG_MESSAGE("ai_passenger_t::bescheid_vehikel_problem","Vehicle %s can't find a route to (%i,%i)!", cnv->get_name(),ziel.x,ziel.y);
+			DBG_MESSAGE("ai_passenger_t::report_vehicle_problem","Vehicle %s can't find a route to (%i,%i)!", cnv->get_name(),ziel.x,ziel.y);
 			cnv->self_destruct();
 			return;
 	}
-	spieler_t::bescheid_vehikel_problem( cnv, ziel );
+	player_t::report_vehicle_problem( cnv, ziel );
 }
 
 
-void ai_passenger_t::laden_abschliessen()
+void ai_passenger_t::load_finished()
 {
 	road_vehicle = vehikel_search( road_wt, 50, 80, warenbauer_t::passagiere, false);
 	if (road_vehicle == NULL) {

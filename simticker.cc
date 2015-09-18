@@ -9,7 +9,7 @@
 #include "dataobj/koord.h"
 #include "simdebug.h"
 #include "simticker.h"
-#include "simgraph.h"
+#include "display/simgraph.h"
 #include "simcolor.h"
 #include "tpl/slist_tpl.h"
 #include "utils/simstring.h"
@@ -24,7 +24,7 @@ struct node {
 	koord pos;
 	PLAYER_COLOR_VAL color;
 	sint16 xpos;
-	long w;
+	sint32 w;
 };
 
 
@@ -42,6 +42,11 @@ bool ticker::empty()
 
 void ticker::clear_ticker()
 {
+	if (!list.empty()) {
+		const int height = display_get_height();
+		const int width  = display_get_width();
+		mark_rect_dirty_wc(0, height-TICKER_YPOS_BOTTOM, width, height);
+	}
 	list.clear();
 }
 
@@ -103,7 +108,7 @@ koord ticker::get_welt_pos()
 }
 
 
-void ticker::zeichnen(void)
+void ticker::draw()
 {
 	if (!list.empty()) {
 		const int start_y=display_get_height()-TICKER_YPOS_BOTTOM;

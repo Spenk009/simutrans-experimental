@@ -8,11 +8,10 @@
 #ifndef simcity_h
 #define simcity_h
 
-
 #include "dataobj/ribi.h"
 
-#include "simdings.h"
-#include "dings/gebaeude.h"
+#include "simobj.h"
+#include "obj/gebaeude.h"
 
 #include "tpl/vector_tpl.h"
 #include "tpl/weighted_vector_tpl.h"
@@ -20,14 +19,14 @@
 #include "tpl/slist_tpl.h"
 #include "tpl/koordhashtable_tpl.h"
 
-#include "vehicle/simverkehr.h"
+#include "vehicle/simroadtraffic.h"
 #include "tpl/sparse_tpl.h"
 #include "utils/plainstring.h"
 
 #include <string>
 
-class karte_t;
-class spieler_t;
+class karte_ptr_t;
+class player_t;
 class fabrik_t;
 class rule_t;
 
@@ -65,11 +64,11 @@ enum city_cost {
 
 #define LEGACY_HIST_CAR_OWNERSHIP (16)
 
-class private_car_destination_finder_t : public fahrer_t
+class private_car_destination_finder_t : public test_driver_t
 {
 private:
-	automobil_t *master;
 	karte_t* welt;
+	road_vehicle_t *master;
 	stadt_t* origin_city;
 	const stadt_t* last_city;
 	uint32 last_tile_speed;
@@ -78,16 +77,16 @@ private:
 	uint16 meters_per_tile_x100;
 
 public:
-	private_car_destination_finder_t(karte_t *w, automobil_t* m, stadt_t* o);	
+	private_car_destination_finder_t(karte_t* w, road_vehicle_t* m, stadt_t* o);	
 	
 	virtual waytype_t get_waytype() const { return road_wt; };
-	virtual bool ist_befahrbar( const grund_t* gr ) const;
+	virtual bool check_next_tile( const grund_t* gr ) const;
 
-	virtual bool ist_ziel(const grund_t* gr, const grund_t*);
+	virtual bool  is_target(const grund_t* gr, const grund_t*);
 
 	virtual ribi_t::ribi get_ribi( const grund_t* gr) const;
 
-	virtual int get_kosten(const grund_t* gr, const sint32 max_speed, koord from_pos);
+	virtual int get_cost(const grund_t* gr, const sint32 max_speed, koord from_pos);
 };
 
 /**
@@ -150,8 +149,8 @@ public:
 	void set_private_car_trip(int passengers, stadt_t* destination_town);
 
 private:
-	static karte_t *welt;
-	spieler_t *besitzer_p;
+	static karte_ptr_t welt;
+	player_t *owner;
 	plainstring name;
 
 	weighted_vector_tpl <gebaeude_t *> buildings;
@@ -160,7 +159,7 @@ private:
 	sparse_tpl<uint8> pax_destinations_new;
 
 	// this counter will increment by one for every change => dialogs can question, if they need to update map
-	unsigned long pax_destinations_new_change;
+	uint32 pax_destinations_new_change;
 
 	koord pos;				// Gruendungsplanquadrat der Stadt ("founding grid square" - Google)
 	koord townhall_road;	// road in front of townhall
@@ -205,7 +204,7 @@ private:
 	/* updates the city history
 	* @author prissi
 	*/
-	void roll_history(void);
+	void roll_history();
 
 	// This is needed to prevent double counting of incoming traffic.
 	sint32 incoming_private_cars;
@@ -250,15 +249,14 @@ public:
 	sint64* get_city_history_year() { return *city_history_year; }
 	sint64* get_city_history_month() { return *city_history_month; }
 
-	// just needed by stadt_info.cc
-	static inline karte_t* get_welt() { return welt; }
-
 	uint32 stadtinfo_options;
 
 	void set_private_car_trips(uint16 number) 
 	{
-		city_history_month[0][HIST_CITYCARS] += number;
-		city_history_year[0][HIST_CITYCARS] += number;
+		// Do not add to the city's history here, as this 
+		// will distort the statistics in the city window
+		// for the number of people who have travelled by
+		// private car *from* the city.
 		incoming_private_cars += number;
 	}
 
@@ -351,7 +349,7 @@ private:
 	void bewerte_res_com_ind(const koord pos, int &ind, int &com, int &res);
 
 	/**
-	 * Build a city building at Planquadrat x,y
+	 * Build/renovates a city building at Planquadrat x,y
 	 */
 	void build_city_building(koord pos, bool new_town);
 	bool renovate_city_building(gebaeude_t *gb);
@@ -374,7 +372,8 @@ private:
 	 *
 	 * @author Hj. Malthaner, V. Meyer
 	 */
-	bool baue_strasse(const koord k, spieler_t *sp, bool forced);
+	bool maybe_build_road(koord k);
+	bool baue_strasse(const koord k, player_t *player, bool forced);
 
 	void baue(bool new_town);
 
@@ -385,6 +384,7 @@ private:
 	 * @author Hj. Malthaner
 	 */
 
+	bool bewerte_loc_has_public_road(koord pos);
 	bool bewerte_loc(koord pos, const rule_t &regel, int rotation);
 
 
@@ -431,6 +431,13 @@ public:
 	*/
 	void add_gebaeude_to_stadt(gebaeude_t *gb, bool ordered=false);
 
+	static bool compare_gebaeude_pos(const gebaeude_t* a, const gebaeude_t* b)
+	{
+		const uint32 pos_a = (a->get_pos().y<<16)+a->get_pos().x;
+		const uint32 pos_b = (b->get_pos().y<<16)+b->get_pos().x;
+		return pos_a<pos_b;
+	}
+
 	/**
 	* Returns the finance history for cities
 	* @author hsiegeln
@@ -456,9 +463,18 @@ public:
 	sint32 get_einwohner() const {return ((buildings.get_sum_weight() * welt->get_settings().get_meters_per_tile()) / 31)+((2*bev-arb-won)>>1);}
 	//sint32 get_einwohner() const { return bev; }
 
-	sint32 get_city_population() const { return city_history_month[0][HIST_CITICENS]; }
-	sint32 get_city_jobs() const { return city_history_month[0][HIST_JOBS]; }
-	sint32 get_city_visitor_demand() const { return city_history_month[0][HIST_VISITOR_DEMAND]; }
+	// Not suitable for use in game computations because this is not network safe. For GUI only.
+	double get_land_area() const;
+
+	// Not suitable for use in game computations because this is not network safe. For GUI only.
+	uint32 get_population_density() const
+	{
+		return city_history_month[0][HIST_CITICENS] / get_land_area();
+	}
+
+	sint32 get_city_population() const { return (sint32) city_history_month[0][HIST_CITICENS]; }
+	sint32 get_city_jobs() const { return (sint32) city_history_month[0][HIST_JOBS]; }
+	sint32 get_city_visitor_demand() const { return (sint32) city_history_month[0][HIST_VISITOR_DEMAND]; }
 
 	uint32 get_buildings()  const { return buildings.get_count(); }
 	sint32 get_unemployed() const { return bev - arb; }
@@ -500,18 +516,18 @@ public:
 	 * => dialogs can question, if they need to update map
 	 * @author prissi
 	 */
-	unsigned long get_pax_destinations_new_change() const { return pax_destinations_new_change; }
+	uint32 get_pax_destinations_new_change() const { return pax_destinations_new_change; }
 
 	/**
-	 * Erzeugt eine neue Stadt auf Planquadrat (x,y) die dem Spieler sp
+	 * Erzeugt eine neue Stadt auf Planquadrat (x,y) die dem Spieler player
 	 * gehoert.
-	 * @param sp Der Besitzer der Stadt.
+	 * @param player The owner of the city
 	 * @param x x-Planquadratkoordinate
 	 * @param y y-Planquadratkoordinate
 	 * @param number of citizens
 	 * @author Hj. Malthaner
 	 */
-	stadt_t(spieler_t* sp, koord pos, sint32 citizens);
+	stadt_t(player_t* player, koord pos, sint32 citizens);
 
 	/**
 	 * Erzeugt eine neue Stadt nach Angaben aus der Datei file.
@@ -520,7 +536,7 @@ public:
 	 * @see stadt_t::speichern()
 	 * @author Hj. Malthaner
 	 */
-	stadt_t(karte_t *welt, loadsave_t *file);
+	stadt_t(loadsave_t *file);
 
 	// closes window and that stuff
 	~stadt_t();
@@ -541,7 +557,7 @@ public:
 	 * und nur noch die Datenstrukturenneu verknüpft werden müssen.
 	 * @author Hj. Malthaner
 	 */
-	void laden_abschliessen();
+	void finish_rd();
 
 	void rotate90( const sint16 y_size );
 
@@ -555,7 +571,7 @@ public:
 
 	void step(long delta_t);
 
-	void neuer_monat(bool check);
+	void new_month(bool check);
 
 	void add_road_connexion(uint16 journey_time_per_tile, const stadt_t* city);
 	void add_road_connexion(uint16 journey_time_per_tile, const fabrik_t* industry);
@@ -570,7 +586,7 @@ public:
 	uint16 check_road_connexion_to(const fabrik_t* industry);
 	uint16 check_road_connexion_to(const gebaeude_t* attraction);
 
-	void erzeuge_verkehrsteilnehmer(koord pos, uint16 journey_tenths_of_minutes, koord target, uint8 number_of_passengers);
+	void generate_private_cars(koord pos, uint16 journey_tenths_of_minutes, koord target, uint8 number_of_passengers);
 
 private:
 	/**
@@ -626,10 +642,11 @@ public:
 	 * @param old_x, old_y: Generate no cities in (0,0) - (old_x, old_y)
 	 * @author Gerd Wachsmuth
 	 */
+
 	static vector_tpl<koord> *random_place(const karte_t *wl, const vector_tpl<sint32> *sizes_list, sint16 old_x, sint16 old_y);
 	// geeigneten platz zur Stadtgruendung durch Zufall ermitteln
 
-	void zeige_info(void);
+	void show_info();
 
 	void add_factory_arbeiterziel(fabrik_t *fab);
 

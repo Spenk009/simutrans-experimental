@@ -2,15 +2,15 @@
 #define __OBJ_READER_H
 
 #include <stdio.h>
-#include <string.h>
 
-#include "../obj_besch.h"
+
 #include "../objversion.h"
 
 #include "../../simtypes.h"
 
 
 struct obj_node_info_t;
+class obj_besch_t;
 template<class key_t, class value_t> class inthashtable_tpl;
 template<class value_t> class stringhashtable_tpl;
 template<class key_t, class value_t> class ptrhashtable_tpl;
@@ -77,7 +77,6 @@ class obj_reader_t
 	static unresolved_map unresolved;
 	static ptrhashtable_tpl<obj_besch_t **, int>  fatals;
 
-	static void read_file(const char *name);
 	static void read_nodes(FILE* fp, obj_besch_t*& data, int register_nodes,uint32 version);
 	static void skip_nodes(FILE *fp,uint32 version);
 
@@ -107,14 +106,16 @@ public:
 	virtual obj_type get_type() const = 0;
 	virtual const char *get_type_name() const = 0;
 
-	static bool init();
-	static bool laden_abschliessen();
+	static bool finish_rd();
 	/**
 	 * Loads all pak files from a directory, displaying a progress bar if the display is initialized
 	 * @param path Directory to be scanned for PAK files
 	 * @param message Label to show over the progress bar
 	 */
 	static bool load(const char *path, const char *message);
+
+	// Only for single files, must take care ob all the cleanup/registering matrix themeselves
+	static void read_file(const char *name);
 };
 
 #endif

@@ -109,7 +109,7 @@ enum accounting_type_vehicles {
 
 class loadsave_t;
 class karte_t;
-class spieler_t;
+class player_t;
 class scenario_t;
 
 
@@ -137,7 +137,7 @@ inline sint64 convert_money(sint64 value) { return (value + 50) / 100; }
  */
 class finance_t {
 	/** transport company */
-	spieler_t * player;
+	player_t * player;
 
 	karte_t * world;
 
@@ -191,7 +191,7 @@ class finance_t {
 	// sint32 vehicle_maintenance[TT_MAX];
 
 public:
-	finance_t(spieler_t * _player, karte_t * _world);
+	finance_t(player_t * _player, karte_t * _world);
 
 	/**
 	 * Adds construction cost to finance stats.
@@ -228,6 +228,20 @@ public:
 		maintenance[tt] += change;
 		maintenance[TT_ALL] += change;
 		return maintenance[tt];
+	}
+
+	/**
+	 * Adds way renewal into/from finance stats (booked as a one off payment of infrastructure maintenance)
+	 * @param renewal cost
+	 * @param wt - waytype for accounting purposes
+	 */
+	inline void book_way_renewal(const sint64 amount, const waytype_t wt)
+	{
+		transport_type tt = translate_waytype_to_tt(wt);
+		veh_year[tt][0][ATV_INFRASTRUCTURE_MAINTENANCE] += amount;
+		veh_month[tt][0][ATV_INFRASTRUCTURE_MAINTENANCE] += amount;
+
+		account_balance += amount;
 	}
 
 	/**
@@ -375,7 +389,7 @@ public:
 	/**
 	 * Is player allowed to purchase something of this price, or is player
 	 * too deep in debt?  (Note that this applies to all players; the public
-     * player is special-cased in spieler_t, and skips this routine.)
+     * player is special-cased in player_t, and skips this routine.)
 	 * @returns whether player is allowed to purchase something of cost "price"
 	 * @params price
 	 */
@@ -435,7 +449,7 @@ public:
 
 	/**
 	 * Returns the finance history (distinguishable by type of transport) for player.
-	 * @param tt one of transport_type
+	 * @param wt one of transport_type
 	 * @param year 0 .. current year, 1 .. last year, etc
 	 * @param type one of accounting_type_vehicles
 	 * @author jk271
@@ -450,7 +464,7 @@ public:
 
 	/**
 	 * @returns maintenance
-	 * @param tt transport type (Truck, Ship Air, ...)
+	 * @param wt transport type (Truck, Ship Air, ...)
 	 */
 	sint32 get_maintenance(transport_type tt=TT_ALL) const { assert(tt<TT_MAX); return maintenance[tt]; }
 
@@ -500,7 +514,7 @@ public:
 	void new_month();
 
 	/**
-	 * rolls the finance history for player (needed when neues_jahr() or neuer_monat()) triggered
+	 * rolls the finance history for player (needed when new_year() or new_month()) triggered
 	 * @author hsiegeln, jk271
 	 */
 	void roll_history_year();

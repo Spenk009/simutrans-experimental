@@ -15,11 +15,8 @@
 #include "skin_besch.h"
 #include "../dataobj/ribi.h"
 #include "../simtypes.h"
-#include "../utils/checksum.h"
+#include "../network/checksum.h"
 
-
-class werkzeug_t;
-class checksum_t;
 
 /*
  *  Autor:
@@ -33,28 +30,15 @@ class checksum_t;
  *	1   Copyright
  *	2   Image list (Bildliste)
  */
-class roadsign_besch_t : public obj_besch_std_name_t {
+class roadsign_besch_t : public obj_besch_transport_infrastructure_t {
 	friend class roadsign_reader_t;
 
 private:
 	uint8 flags;
 
-	/**
-	* Way type: i.e. road or track
-	* @see waytype_t
-	* @author prissi
-	*/
-	uint8 wtyp;
+	sint8 offset_left; // default 14
 
 	uint16 min_speed;	// 0 = no min speed
-
-	uint32 cost;
-
-	/**
-	* Introduction date
-	* @author prissi
-	*/
-	uint16 intro_date;
 
 	/**
 	 * Whether this signal/sign
@@ -62,9 +46,43 @@ private:
 	 */
 	uint8 allow_underground;
 
-	uint16 obsolete_date;
+	// What group to which this signal belongs. 
+	// This determines the signal boxes to which it can be linked.
+	uint32 signal_group;
 
-	werkzeug_t *builder;
+	// This determines how far that this can be placed from a signalbox. 
+	// Note that, of this figure and the radius of the signalbox, the 
+	// lowest value of the two determines whether the signal can be
+	// built. This value is in meters. 0 = unlimited.
+	uint32 max_distance_to_signalbox;
+
+	// The number of aspects that this signal can display. 
+	// This should be a number between 1 (for a fixed sign
+	// board as in, e.g. ETRMS Level 2, and 5 for full 5
+	// aspect signalling. Default: 2). Relevant only for
+	// railway signals, not roadsigns (which are set to 0).
+	// Note that SIGN_PRE_SIGNAL should now be used *only*
+	// for signals that are purely pre-signals and have
+	// no stop/danger aspect. 
+	uint8 aspects;
+
+	// True if this is a signal with a call-on aspect.
+	bool has_call_on;
+
+	// True if this is a choose signal with choose and
+	// non-choose signal aspects (other than danger).
+	bool has_selective_choose;
+
+	// The working method that this signal engenders
+	// if passed. 
+	working_method_t working_method; 
+
+	// Whether this is a permissive signal.
+	bool permissive;
+
+	// The maximum speed at which this signal may be approached.
+	// Used for system speeds. 
+	uint32 max_speed;
 
 public:
 	enum types {
@@ -81,24 +99,15 @@ public:
 
 	int get_bild_nr(ribi_t::dir dir) const
 	{
-		bild_besch_t const* const bild = get_child<bildliste_besch_t>(2)->get_bild(dir);
-		return bild != NULL ? bild->get_nummer() : IMG_LEER;
+		bild_besch_t const* const image = get_child<bildliste_besch_t>(2)->get_bild(dir);
+		return image != NULL ? image->get_nummer() : IMG_LEER;
 	}
 
 	int get_bild_anzahl() const { return get_child<bildliste_besch_t>(2)->get_anzahl(); }
 
 	skin_besch_t const* get_cursor() const { return get_child<skin_besch_t>(3); }
 
-	/**
-	 * get way type
-	 * @see waytype_t
-	 * @author Hj. Malthaner
-	 */
-	waytype_t get_wtyp() const { return (waytype_t)wtyp; }
-
 	sint32 get_min_speed() const { return min_speed; }
-
-	sint32 get_preis() const { return cost; }
 
 	bool is_single_way() const { return (flags&ONE_WAY)!=0; }
 
@@ -113,7 +122,9 @@ public:
 	bool is_signal() const { return flags&SIGN_SIGNAL; }
 
 	//  return true for presignal
-	bool is_pre_signal() const { return flags&SIGN_PRE_SIGNAL; }
+	bool is_pre_signal() const { return flags&SIGN_PRE_SIGNAL && !is_combined_signal(); }
+
+	bool is_combined_signal() const { return flags&SIGN_PRE_SIGNAL && aspects == 3 && working_method == absolute_block; }
 
 	//  return true for single track section signal
 	bool is_longblock_signal() const { return flags&SIGN_LONGBLOCK_SIGNAL; }
@@ -127,37 +138,41 @@ public:
 
 	types get_flags() const { return (types)flags; }
 
-	/**
-	* @return introduction year
-	* @author prissi
-	*/
-	uint16 get_intro_year_month() const { return intro_date; }
-
-	/**
-	* @return introduction month
-	* @author prissi
-	*/
-	uint16 get_retire_year_month() const { return obsolete_date; }
+	sint8 get_offset_left() const { return offset_left; }
 
 	uint8 get_allow_underground() const { return allow_underground; }
 
-	// default tool for building
-	werkzeug_t *get_builder() const {
-		return builder;
-	}
-	void set_builder( werkzeug_t *w )  {
-		builder = w;
-	}
+	uint32 get_signal_group() const { return signal_group; }
+
+	uint32 get_max_distance_to_signalbox() const { return max_distance_to_signalbox; }
+
+	uint8 get_aspects() const { return aspects; }
+
+	bool get_has_call_on() const { return has_call_on; }
+
+	bool get_has_selective_choose() const { return has_selective_choose; }
+
+	bool get_permissive() const { return permissive; }
+
+	uint32 get_max_speed() const { return max_speed; }
+
+	working_method_t get_working_method() const { return working_method; }
 
 	void calc_checksum(checksum_t *chk) const
 	{
+		obj_besch_transport_infrastructure_t::calc_checksum(chk);
 		chk->input(flags);
-		chk->input(wtyp);
 		chk->input(min_speed);
-		chk->input(cost);
-		chk->input(intro_date);
-		chk->input(obsolete_date);
 		chk->input(allow_underground);
+		chk->input(signal_group);
+		chk->input(base_maintenance); 
+		chk->input(max_distance_to_signalbox);
+		chk->input(aspects);
+		chk->input(has_call_on);
+		chk->input(has_selective_choose);
+		chk->input(permissive);
+		chk->input(max_speed);
+		chk->input(working_method); 
 	}
 };
 

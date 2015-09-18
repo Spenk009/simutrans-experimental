@@ -13,8 +13,8 @@
 #include "../simtypes.h"
 #include <string>
 
-class vehikel_t;
-class spieler_t;
+class vehicle_t;
+class player_t;
 class convoi_t;
 class vehikel_besch_t;
 class ware_besch_t;
@@ -40,17 +40,17 @@ public:
 	static bool register_besch(vehikel_besch_t *besch);
 	static bool alles_geladen();
 
-	static vehikel_t* baue(koord3d k, spieler_t* sp, convoi_t* cnv, const vehikel_besch_t* vb )
+	static vehicle_t* baue(koord3d k, player_t* player, convoi_t* cnv, const vehikel_besch_t* vb )
 	{
-		return baue(k, sp, cnv, vb, false);
+		return baue(k, player, cnv, vb, false);
 	}
 
-	static vehikel_t* baue(koord3d k, spieler_t* sp, convoi_t* cnv, const vehikel_besch_t* vb, bool upgrade, uint16 livery_scheme_index = 0 );
+	static vehicle_t* baue(koord3d k, player_t* player, convoi_t* cnv, const vehikel_besch_t* vb, bool upgrade, uint16 livery_scheme_index = 0 );
 
 	static const vehikel_besch_t * get_info(const char *name);
 	static slist_tpl<vehikel_besch_t*>& get_info(waytype_t);
 
-	/* extended sreach for vehicles for KI
+	/* extended search for vehicles for KI
 	* @author prissi
 	*/
 	static const vehikel_besch_t *vehikel_search(waytype_t typ,const uint16 month_now,const uint32 target_power,const sint32 target_speed, const ware_besch_t * target_freight, bool include_electric, bool not_obsolete );

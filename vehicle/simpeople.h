@@ -1,17 +1,17 @@
 #ifndef simpeople_h
 #define simpeople_h
 
-#include "simverkehr.h"
+#include "simroadtraffic.h"
 
 class fussgaenger_besch_t;
 
 /**
- * Fuﬂg‰nger sind auch Verkehrsteilnehmer.
+ * Pedestrians also are road users.
  *
  * @author Hj. Malthaner
- * @see verkehrsteilnehmer_t
+ * @see road_user_t
  */
-class fussgaenger_t : public verkehrsteilnehmer_t
+class pedestrian_t : public road_user_t
 {
 private:
 	static stringhashtable_tpl<const fussgaenger_besch_t *> table;
@@ -22,35 +22,39 @@ private:
 protected:
 	void rdwr(loadsave_t *file);
 
-	void calc_bild();
+	void calc_image();
 
-	fussgaenger_t(karte_t *welt, koord3d pos);
+	/**
+	 * Creates pedestrian at position given by @p gr.
+	 * Does not add pedestrian to the tile!
+	 */
+	pedestrian_t(grund_t *gr);
 
 public:
-	fussgaenger_t(karte_t *welt, loadsave_t *file);
+	pedestrian_t(loadsave_t *file);
 
-	virtual ~fussgaenger_t();
+	virtual ~pedestrian_t();
 
 	const fussgaenger_besch_t *get_besch() const { return besch; }
 
 	const char *get_name() const {return "Fussgaenger";}
-#ifdef INLINE_DING_TYPE
+#ifdef INLINE_OBJ_TYPE
 #else
-	typ get_typ() const { return fussgaenger; }
+	typ get_typ() const { return pedestrian; }
 #endif
 
 	bool sync_step(long delta_t);
 
 	// prissi: always free
-	virtual bool ist_weg_frei() { return true; }
-	virtual bool hop_check() { return true; }
-	virtual grund_t* hop();
+	virtual bool can_enter_tile() { return true; }
+	virtual grund_t* hop_check();
+	virtual void hop(grund_t* gr);
 
 	// class register functions
 	static bool register_besch(const fussgaenger_besch_t *besch);
 	static bool alles_geladen();
 
-	static void erzeuge_fussgaenger_an(karte_t *welt, koord3d k, int &anzahl);
+	static void generate_pedestrians_at(koord3d k, int &anzahl);
 };
 
 #endif

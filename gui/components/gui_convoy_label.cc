@@ -11,12 +11,12 @@
 
 #include "../../simconst.h"
 #include "../../simconvoi.h"
-#include "../../simgraph.h"
+#include "../../display/simgraph.h"
 #include "../../convoy.h"
 #include "../../bauer/warenbauer.h"
 #include "../../dataobj/translator.h"
 #include "../../player/simplay.h"
-#include "../../vehicle/simvehikel.h"
+#include "../../vehicle/simvehicle.h"
 
 
 gui_convoy_label_t::gui_convoy_label_t(convoihandle_t cnv, bool show_number_of_convoys, bool show_max_speed):
@@ -26,24 +26,24 @@ gui_convoy_label_t::gui_convoy_label_t(convoihandle_t cnv, bool show_number_of_c
 }
 
 
-koord gui_convoy_label_t::get_image_size() const
+scr_size gui_convoy_label_t::get_image_size() const
 {
-	int tamx=0;
-	int tamy=0;
+	scr_coord_val tamx=0;
+	scr_coord_val tamy=0;
 	if (cnv.is_bound() && cnv->get_vehikel_anzahl()>0) {
 		for(unsigned i=0; i<cnv->get_vehikel_anzahl();i++) {
 			KOORD_VAL x, y, w, h;
-			const image_id bild=cnv->get_vehikel(i)->get_basis_bild();
-			display_get_base_image_offset(bild, &x, &y, &w, &h );
+			const image_id image=cnv->get_vehikel(i)->get_base_image();
+			display_get_base_image_offset(image, &x, &y, &w, &h );
 			tamx += (w*2)/3;
 			tamy = max(tamy,h+26);
 		}
 	}
-	return koord(tamx,tamy);
+	return scr_size(tamx,tamy);
 }
 
 
-koord gui_convoy_label_t::get_size() const
+scr_size gui_convoy_label_t::get_size() const
 {
 	int tamx=0, tamy=0;
 	if (get_text_pointer()!=NULL) {
@@ -51,34 +51,34 @@ koord gui_convoy_label_t::get_size() const
 		tamy+=LINESPACE+separation;
 	}
 	tamy+=(show_number?LINESPACE:0)+(show_max_speed?LINESPACE:0);
-	koord img_tam=get_image_size();
-	return koord(max(tamx,img_tam.x),tamy+img_tam.y);
+	scr_size img_tam=get_image_size();
+	return scr_size(max(tamx,img_tam.w),tamy+img_tam.h);
 }
 
 
-void gui_convoy_label_t::zeichnen(koord offset)
+void gui_convoy_label_t::draw(scr_coord offset)
 {
 	if (get_text_pointer()!=NULL) {
-		gui_label_t::zeichnen(offset);
-		offset=offset+koord(0,LINESPACE+separation);
+		gui_label_t::draw(offset);
+		offset += scr_size(0,LINESPACE+separation);
 	}
 	int left=pos.x+offset.x;
-	koord tam=get_image_size();
+	scr_size tam=get_image_size();
 	if (get_align()==centered) {
-		left-=tam.x/2;
+		left-=tam.w/2;
 	} else if (get_align()==right) {
-		left-=tam.x;
+		left-=tam.w;
 	}
 	if (cnv.is_bound() && cnv->get_vehikel_anzahl()>0) {
 		for(unsigned i=0; i<cnv->get_vehikel_anzahl();i++) {
 			KOORD_VAL x, y, w, h;
-			const image_id bild=cnv->get_vehikel(i)->get_basis_bild();
-			display_get_base_image_offset(bild, &x, &y, &w, &h );
-			display_base_img(bild,left-x,pos.y+offset.y+13-y-h/2,cnv->get_besitzer()->get_player_nr(),false,true);
+			const image_id image=cnv->get_vehikel(i)->get_base_image();
+			display_get_base_image_offset(image, &x, &y, &w, &h );
+			display_base_img(image,left-x,pos.y+offset.y+13-y-h/2,cnv->get_owner()->get_player_nr(),false,true);
 			left += (w*2)/3;
 		}
 	}
-	offset.y+=get_image_size().y;
+	offset.y+=get_image_size().h;
 	if (show_number || show_max_speed)
 	{
 		convoi_t &convoy = *cnv.get_rep();			

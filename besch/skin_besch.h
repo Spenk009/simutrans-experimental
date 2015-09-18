@@ -7,7 +7,7 @@
 #ifndef __SKIN_BESCH_H
 #define __SKIN_BESCH_H
 
-#include "../simimg.h"
+#include "../display/simimg.h"
 #include "obj_besch_std_name.h"
 #include "bildliste2d_besch.h"
 
@@ -22,7 +22,7 @@
  *  Kindknoten:
  *	0   Name
  *	1   Copyright
- *	2   Bildliste
+ *	2   Image list
  */
 class skin_besch_t : public obj_besch_std_name_t {
 public:
@@ -32,8 +32,8 @@ public:
 
 	image_id get_bild_nr(int i) const
 	{
-		const bild_besch_t *bild = get_bild(i);
-		return bild != NULL ? bild->get_nummer() : IMG_LEER;
+		const bild_besch_t *image = get_bild(i);
+		return image != NULL ? image->get_nummer() : IMG_LEER;
 	}
 };
 

@@ -7,7 +7,7 @@
 
 class warenbauer_t;
 class karte_t;
-class spieler_t;
+class player_t;
 
 /** Class to handle goods packets (and their destinations) */
 class ware_t
@@ -19,11 +19,11 @@ private:
 	static const ware_besch_t *index_to_besch[256];
 
 public:
+	/// amount of goods
+	uint32 menge;
+
 	/// type of good, used as index into index_to_besch
 	uint32 index: 8;
-
-	/// amount of goods
-	uint32 menge : 23;
 
 	// Necessary to determine whether to book 
 	// jobs taken on arrival.
@@ -68,14 +68,14 @@ private:
 	/**
 	 * Update target (zielpos) for factory-going goods (after loading or rotating)
 	 */
-	void update_factory_target(karte_t *welt);
+	void update_factory_target();
 
 public:
-	const halthandle_t &get_ziel() const { return ziel; }
+	inline const halthandle_t &get_ziel() const { return ziel; }
 	void set_ziel(const halthandle_t &ziel) { this->ziel = ziel; }
 
-	const halthandle_t &get_zwischenziel() const { return zwischenziel; }
-	halthandle_t &access_zwischenziel() { return zwischenziel; }
+	inline const halthandle_t &get_zwischenziel() const { return zwischenziel; }
+	inline halthandle_t &access_zwischenziel() { return zwischenziel; }
 	void set_zwischenziel(const halthandle_t &zwischenziel) { this->zwischenziel = zwischenziel; }
 
 	koord get_zielpos() const { return zielpos; }
@@ -86,35 +86,36 @@ public:
 	ware_t();
 	ware_t(const ware_besch_t *typ);
 	ware_t(const ware_besch_t *typ, halthandle_t o);
-	ware_t(karte_t *welt,loadsave_t *file);
+//	ware_t(karte_t *welt,loadsave_t *file);
+	ware_t(loadsave_t *file);
 
 	/**
 	 * gibt den nicht-uebersetzten warennamen zurück
 	 * @author Hj. Malthaner
 	 * "There the non-translated names were back"
 	 */
-	const char *get_name() const { return get_besch()->get_name(); }
-	const char *get_mass() const { return get_besch()->get_mass(); }
-	uint8 get_catg() const { return get_besch()->get_catg(); }
-	uint8 get_index() const { return index; }
+	inline const char *get_name() const { return get_besch()->get_name(); }
+	inline const char *get_mass() const { return get_besch()->get_mass(); }
+	inline uint8 get_catg() const { return get_besch()->get_catg(); }
+	inline uint8 get_index() const { return index; }
 
 	//@author: jamespetts
-	halthandle_t get_origin() const { return origin; }
+	inline halthandle_t get_origin() const { return origin; }
 	void set_origin(halthandle_t value) { origin = value; }
-	halthandle_t get_last_transfer() const { return last_transfer; }
+	inline halthandle_t get_last_transfer() const { return last_transfer; }
 	void set_last_transfer(halthandle_t value) { last_transfer = value; }
 
-	const ware_besch_t* get_besch() const { return index_to_besch[index]; }
+	inline const ware_besch_t* get_besch() const { return index_to_besch[index]; }
 	void set_besch(const ware_besch_t* type);
 
-	void rdwr(karte_t *welt,loadsave_t *file);
+	void rdwr(loadsave_t *file);
 
-	void laden_abschliessen(karte_t *welt,spieler_t *sp);
+	void finish_rd(karte_t *welt);
 
 	// find out the category ...
-	bool is_passenger() const { return index == 0; }
-	bool is_mail() const { return index == 1; }
-	bool is_freight() const { return index > 2; }
+	inline bool is_passenger() const { return index == 0; }
+	inline bool is_mail() const { return index == 1; }
+	inline bool is_freight() const { return index > 2; }
 
 	// The time at which this packet arrived at the current station
 	// @author: jamespetts
@@ -153,7 +154,7 @@ public:
 	 * Adjust target coordinates.
 	 * Must be called after factories have been rotated!
 	 */
-	void rotate90( karte_t *welt, sint16 y_size );
+	void rotate90( sint16 y_size );
 };
 
 #endif

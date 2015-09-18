@@ -7,13 +7,12 @@
 
 #include "bridge_reader.h"
 #include "../obj_node_info.h"
-#include "../../dataobj/pakset_info.h"
+#include "../../network/pakset_info.h"
 
 
 void bridge_reader_t::register_obj(obj_besch_t *&data)
 {
 	bruecke_besch_t *besch = static_cast<bruecke_besch_t *>(data);
-
 	brueckenbauer_t::register_besch(besch);
 
 	checksum_t *chk = new checksum_t();
@@ -73,18 +72,18 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 	if(version == 1) {
 		// Versioned node, version 1
 
-		besch->wegtyp = (uint8)decode_uint16(p);
+		besch->wt = (uint8)decode_uint16(p);
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 
 	} else if (version == 2) {
 
 		// Versioned node, version 2
 
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->maintenance = decode_uint32(p);
-		besch->wegtyp = decode_uint8(p);
+		besch->wt = decode_uint8(p);
 
 	} else if (version == 3) {
 
@@ -92,9 +91,9 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		// pillars added
 
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->maintenance = decode_uint32(p);
-		besch->wegtyp = decode_uint8(p);
+		besch->wt = decode_uint8(p);
 		besch->pillars_every = decode_uint8(p);
 		besch->max_length = 0;
 
@@ -104,9 +103,9 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		// pillars added
 
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->maintenance = decode_uint32(p);
-		besch->wegtyp = decode_uint8(p);
+		besch->wt = decode_uint8(p);
 		besch->pillars_every = decode_uint8(p);
 		besch->max_length = decode_uint8(p);
 
@@ -116,9 +115,9 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		// timeline
 
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->maintenance = decode_uint32(p);
-		besch->wegtyp = decode_uint8(p);
+		besch->wt = decode_uint8(p);
 		besch->pillars_every = decode_uint8(p);
 		besch->max_length = decode_uint8(p);
 		besch->intro_date = decode_uint16(p);
@@ -130,24 +129,25 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		// snow
 
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->maintenance = decode_uint32(p);
-		besch->wegtyp = decode_uint8(p);
+		besch->wt = decode_uint8(p);
 		besch->pillars_every = decode_uint8(p);
 		besch->max_length = decode_uint8(p);
 		besch->intro_date = decode_uint16(p);
 		besch->obsolete_date = decode_uint16(p);
 		besch->number_seasons = decode_uint8(p);
 
-	} else if (version==7  ||  version==8) {
+	}
+	else if (version==7  ||  version==8) {
 
 		// Versioned node, version 7/8
 		// max_height, assymetric pillars
 
 		besch->topspeed = decode_uint16(p);
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->maintenance = decode_uint32(p);
-		besch->wegtyp = decode_uint8(p);
+		besch->wt = decode_uint8(p);
 		besch->pillars_every = decode_uint8(p);
 		besch->max_length = decode_uint8(p);
 		besch->intro_date = decode_uint16(p);
@@ -157,29 +157,79 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		besch->number_seasons = decode_uint8(p);
 		if(experimental)
 		{
-			if(experimental_version == 0)
+			besch->max_weight = besch->axle_load = decode_uint32(p);
+			way_constraints.set_permissive(decode_uint8(p));
+			way_constraints.set_prohibitive(decode_uint8(p));
+			if(experimental_version == 1)
 			{
-				besch->max_weight = decode_uint32(p);
-				way_constraints.set_permissive(decode_uint8(p));
-				way_constraints.set_prohibitive(decode_uint8(p));
+				besch->topspeed_gradient_1 = decode_uint16(p);
+				besch->topspeed_gradient_2 = decode_uint16(p);
+				besch->max_altitude = decode_sint8(p);
+				besch->max_vehicles_on_tile = decode_uint8(p);
+				besch->has_own_way_graphics = decode_uint8(p);
+				besch->has_way = decode_uint8(p);
 			}
-			else
+			if(experimental_version > 1)
 			{
-				dbg->fatal( "bridge_reader_t::read_node()","Incompatible pak file version for Simutrans-Ex, number %i", experimental_version );
+				dbg->fatal("bridge_reader_t::read_node()","Incompatible pak file version for Simutrans-Ex, number %i", experimental_version);
 			}
 		}
+
+	}
+	else if (version==9) {
+
+		besch->topspeed = decode_uint16(p);
+		besch->cost = decode_uint32(p);
+		besch->maintenance = decode_uint32(p);
+		besch->wt = decode_uint8(p);
+		besch->pillars_every = decode_uint8(p);
+		besch->max_length = decode_uint8(p);
+		besch->intro_date = decode_uint16(p);
+		besch->obsolete_date = decode_uint16(p);
+		besch->pillars_asymmetric = (decode_uint8(p)!=0);
+		besch->max_height = decode_uint8(p);
+		besch->axle_load = decode_uint16(p);	// new
+		if(experimental)
+		{
+			besch->max_weight = decode_uint32(p); // DIFFERENT to axle load.
+			way_constraints.set_permissive(decode_uint8(p));
+			way_constraints.set_prohibitive(decode_uint8(p));
+			if(experimental_version == 1)
+			{
+				besch->topspeed_gradient_1 = decode_uint16(p);
+				besch->topspeed_gradient_2 = decode_uint16(p);
+				besch->max_altitude = decode_sint8(p);
+				besch->max_vehicles_on_tile = decode_uint8(p);
+				besch->has_own_way_graphics = decode_uint8(p);
+				besch->has_way = decode_uint8(p);
+			}
+			if(experimental_version > 1)
+			{
+				dbg->fatal("bridge_reader_t::read_node()","Incompatible pak file version for Simutrans-Ex, number %i", experimental_version);
+			}
+		}
+		besch->number_seasons = decode_uint8(p);
 
 	}
 	else {
 		// old node, version 0
 
-		besch->wegtyp = (uint8)v;
+		besch->wt = (uint8)v;
 		decode_uint16(p);                    // Menupos, no more used
-		besch->preis = decode_uint32(p);
+		besch->cost = decode_uint32(p);
 		besch->topspeed = 999;               // Safe default ...
 	}
 
 	besch->set_way_constraints(way_constraints);
+
+	if(experimental_version < 1 || !experimental)
+	{
+		besch->topspeed_gradient_1 = besch->topspeed_gradient_2 = besch->topspeed;
+		besch->max_altitude = 0;
+		besch->max_vehicles_on_tile = 251;
+		besch->has_own_way_graphics = true;
+		besch->has_way = false;
+	}
 
 	// pillars cannot be heigher than this to avoid drawing errors
 	if(besch->pillars_every>0  &&  besch->max_height==0) {
@@ -188,9 +238,16 @@ obj_besch_t * bridge_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 	// indicate for different copyright/name lookup
 	besch->offset = version<8 ? 0 : 2;
 
+	besch->base_cost = besch->cost;
+	besch->base_maintenance = besch->maintenance;
+
+	if(  version < 9  ) {
+		besch->axle_load = 9999;
+	}
+
 	DBG_DEBUG("bridge_reader_t::read_node()",
-	"version=%d waytype=%d price=%d topspeed=%d,pillars=%i,max_length=%i,max_weight%d",
-	version, besch->wegtyp, besch->preis, besch->topspeed,besch->pillars_every,besch->max_length,besch->max_weight);
+		"version=%d, waytype=%d, price=%d, topspeed=%d, pillars=%i, max_length=%i, max_weight%d, axle_load=%i",
+		version, besch->wt, besch->cost, besch->topspeed,besch->pillars_every,besch->max_length,besch->max_weight,besch->axle_load);
 
   return besch;
 }

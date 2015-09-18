@@ -11,9 +11,9 @@
 
 #include <stdio.h>
 
-#include "../simtools.h"
+#include "../utils/simrandom.h"
 #include "../simworld.h"
-#include "../simwerkz.h"
+#include "../simtool.h"
 
 #include "../bauer/hausbauer.h"
 
@@ -30,7 +30,7 @@
 
 
 // new tool definition
-wkz_build_haus_t curiosity_edit_frame_t::haus_tool=wkz_build_haus_t();
+tool_build_house_t curiosity_edit_frame_t::haus_tool=tool_build_house_t();
 char curiosity_edit_frame_t::param_str[256];
 
 
@@ -43,54 +43,56 @@ static bool compare_haus_besch(const haus_besch_t* a, const haus_besch_t* b)
 
 
 
-curiosity_edit_frame_t::curiosity_edit_frame_t(spieler_t* sp_, karte_t* welt) :
-	extend_edit_gui_t(translator::translate("curiosity builder"), sp_, welt),
+curiosity_edit_frame_t::curiosity_edit_frame_t(player_t* player_) :
+	extend_edit_gui_t(translator::translate("curiosity builder"), player_),
 	hauslist(16),
-	lb_rotation( rot_str, COL_WHITE, gui_label_t::right ),
+	lb_rotation( rot_str, SYSCOL_TEXT_HIGHLIGHT, gui_label_t::right ),
 	lb_rotation_info( translator::translate("Rotation"), COL_BLACK, gui_label_t::left )
 {
 	rot_str[0] = 0;
 	rotation = 255;
 	besch = NULL;
 	haus_tool.set_default_param(NULL);
-	haus_tool.cursor = werkzeug_t::general_tool[WKZ_BUILD_HAUS]->cursor;
-	haus_tool.id = werkzeug_t::general_tool[WKZ_BUILD_HAUS]->id;
+	haus_tool.cursor = tool_t::general_tool[TOOL_BUILD_HOUSE]->cursor;
+	haus_tool.id = tool_t::general_tool[TOOL_BUILD_HOUSE]->id;
 
-	bt_city_attraction.init( button_t::square_state, "City attraction", koord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	bt_city_attraction.init( button_t::square_state, "City attraction", scr_coord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
 	bt_city_attraction.add_listener(this);
 	bt_city_attraction.pressed = true;
-	add_komponente(&bt_city_attraction);
+	add_component(&bt_city_attraction);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
-	bt_land_attraction.init( button_t::square_state, "Land attraction", koord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	bt_land_attraction.init( button_t::square_state, "Land attraction", scr_coord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
 	bt_land_attraction.add_listener(this);
 	bt_land_attraction.pressed = true;
-	add_komponente(&bt_land_attraction);
+	add_component(&bt_land_attraction);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
-	bt_monuments.init( button_t::square_state, "Monument", koord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	bt_monuments.init( button_t::square_state, "Monument", scr_coord(get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
 	bt_monuments.add_listener(this);
-	add_komponente(&bt_monuments);
+	add_component(&bt_monuments);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
-	lb_rotation_info.set_pos( koord( get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
-	add_komponente(&lb_rotation_info);
+	lb_rotation_info.set_pos( scr_coord( get_tab_panel_width()+2*MARGIN, offset_of_comp-4 ) );
+	add_component(&lb_rotation_info);
 
-	bt_left_rotate.init( button_t::repeatarrowleft, NULL, koord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2-16, offset_of_comp-4 ) );
+	bt_left_rotate.init( button_t::repeatarrowleft, NULL, scr_coord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2-16, offset_of_comp-4 ) );
 	bt_left_rotate.add_listener(this);
-	add_komponente(&bt_left_rotate);
+	add_component(&bt_left_rotate);
 
-	bt_right_rotate.init( button_t::repeatarrowright, NULL, koord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+50, offset_of_comp-4 ) );
+	bt_right_rotate.init( button_t::repeatarrowright, NULL, scr_coord(get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+50, offset_of_comp-4 ) );
 	bt_right_rotate.add_listener(this);
-	add_komponente(&bt_right_rotate);
+	add_component(&bt_right_rotate);
 
-	lb_rotation.set_pos( koord( get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+44, offset_of_comp-4 ) );
-	add_komponente(&lb_rotation);
+	//lb_rotation.set_pos( scr_coord( get_tab_panel_width()+2*MARGIN+COLUMN_WIDTH/2+44, offset_of_comp-4 ) );
+	lb_rotation.set_width( bt_right_rotate.get_pos().x - bt_left_rotate.get_pos().x - bt_left_rotate.get_size().w );
+	lb_rotation.align_to(&bt_left_rotate,ALIGN_EXTERIOR_H | ALIGN_LEFT | ALIGN_CENTER_V);
+	add_component(&lb_rotation);
 	offset_of_comp += D_BUTTON_HEIGHT;
 
 	fill_list( is_show_trans_name );
 
-	resize(koord(0,0));
+	resize(scr_coord(0,0));
 }
 
 
@@ -154,23 +156,23 @@ void curiosity_edit_frame_t::fill_list( bool translate )
 
 
 
-bool curiosity_edit_frame_t::action_triggered( gui_action_creator_t *komp,value_t e)
+bool curiosity_edit_frame_t::action_triggered( gui_action_creator_t *comp,value_t e)
 {
 	// only one chain can be shown
-	if(  komp==&bt_city_attraction  ) {
+	if(  comp==&bt_city_attraction  ) {
 		bt_city_attraction.pressed ^= 1;
 		fill_list( is_show_trans_name );
 	}
-	else if(  komp==&bt_land_attraction  ) {
+	else if(  comp==&bt_land_attraction  ) {
 		bt_land_attraction.pressed ^= 1;
 		fill_list( is_show_trans_name );
 	}
-	else if(  komp==&bt_monuments  ) {
+	else if(  comp==&bt_monuments  ) {
 		bt_monuments.pressed ^= 1;
 		fill_list( is_show_trans_name );
 	}
 	else if(besch) {
-		if(  komp==&bt_left_rotate  &&  rotation!=255) {
+		if(  comp==&bt_left_rotate  &&  rotation!=255) {
 			if(rotation==0) {
 				rotation = 255;
 			}
@@ -178,13 +180,13 @@ bool curiosity_edit_frame_t::action_triggered( gui_action_creator_t *komp,value_
 				rotation --;
 			}
 		}
-		else if(  komp==&bt_right_rotate  &&  rotation!=besch->get_all_layouts()-1) {
+		else if(  comp==&bt_right_rotate  &&  rotation!=besch->get_all_layouts()-1) {
 			rotation ++;
 		}
 		// update info ...
 		change_item_info( scl.get_selection() );
 	}
-	return extend_edit_gui_t::action_triggered(komp,e);
+	return extend_edit_gui_t::action_triggered(comp,e);
 }
 
 
@@ -227,7 +229,7 @@ void curiosity_edit_frame_t::change_item_info(sint32 entry)
 			}
 
 			info_text.recalc_size();
-			cont.set_groesse( info_text.get_groesse() + koord(0, 20) );
+			cont.set_size( info_text.get_size() + scr_coord(0, 20) );
 
 			// orientation (255=random)
 			if(besch->get_all_layouts()>1) {
@@ -278,9 +280,9 @@ void curiosity_edit_frame_t::change_item_info(sint32 entry)
 		// the tools will be always updated, even though the data up there might be still current
 		sprintf( param_str, "%i%c%s", bt_climates.pressed, rotation==255 ? '#' : '0'+rotation, besch->get_name() );
 		haus_tool.set_default_param(param_str);
-		welt->set_werkzeug( &haus_tool, sp );
+		welt->set_tool( &haus_tool, player );
 	}
-	else if(welt->get_werkzeug(sp->get_player_nr())==&haus_tool) {
+	else if(welt->get_tool(player->get_player_nr())==&haus_tool) {
 		for(int i=0;  i<4;  i++  ) {
 			img[i].set_image( IMG_LEER );
 		}
@@ -291,12 +293,12 @@ void curiosity_edit_frame_t::change_item_info(sint32 entry)
 		}
 
 		besch = NULL;
-		welt->set_werkzeug( werkzeug_t::general_tool[WKZ_ABFRAGE], sp );
+		welt->set_tool( tool_t::general_tool[TOOL_QUERY], player );
 	}
 }
 
 
-void curiosity_edit_frame_t::zeichnen(koord pos, koord gr)
+void curiosity_edit_frame_t::draw(scr_coord pos, scr_size size)
 {
 	// remove constructed monuments from list
 	if(besch  &&  besch->get_utyp()==haus_besch_t::denkmal  &&  !hausbauer_t::is_valid_denkmal(besch)  ) {
@@ -306,5 +308,5 @@ void curiosity_edit_frame_t::zeichnen(koord pos, koord gr)
 		fill_list( is_show_trans_name );
 	}
 
-	extend_edit_gui_t::zeichnen(pos,gr);
+	extend_edit_gui_t::draw(pos,size);
 }
