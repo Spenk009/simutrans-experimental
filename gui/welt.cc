@@ -478,9 +478,10 @@ void welt_gui_t::update_densities()
  * Calculate the new Map-Preview. Initialize the new RNG!
  * @author Hj. Malthaner
  */
-void welt_gui_t::update_preview()
+void welt_gui_t::update_preview(bool load_heightfield)
 {
-	if(  loaded_heightfield  ) {
+	if(  loaded_heightfield  ||  load_heightfield) {
+		loaded_heightfield = true;
 		update_from_heightfield(sets->heightfield.c_str());
 	}
 	else {
@@ -615,7 +616,8 @@ bool welt_gui_t::action_triggered( gui_action_creator_t *comp,value_t v)
 		loaded_heightfield = false;
 		sets->heightfield = "";
 		sets->grundwasser = -2*env_t::pak_height_conversion_factor;
-		create_win(new load_relief_frame_t(sets), w_info, magic_load_t);
+		load_relief_frame_t* lrf = new load_relief_frame_t(sets);
+		create_win((display_get_width() - lrf->get_windowsize().w-10), 40, lrf, w_info, magic_load_t );
 		knr = sets->get_karte_nummer();	// otherwise using cancel would not show the normal generated map again
 	}
 	else if(comp==&use_intro_dates) {
@@ -679,7 +681,7 @@ bool welt_gui_t::action_triggered( gui_action_creator_t *comp,value_t v)
 		welt->set_pause(false);
 		// save setting ...
 		loadsave_t file;
-		if(file.wr_open("default.sve",loadsave_t::binary,"settings only",SAVEGAME_VER_NR, EXPERIMENTAL_VER_NR)) {
+		if(file.wr_open("default.sve",loadsave_t::binary,"settings only",SAVEGAME_VER_NR, EXPERIMENTAL_VER_NR, EXPERIMENTAL_REVISION_NR)) {
 			// save default setting
 			env_t::default_settings.rdwr(&file);
 			welt->set_scale();

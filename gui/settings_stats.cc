@@ -46,7 +46,10 @@ static char const* const version[] =
 	"0.112.3",
 	"0.112.5",
 	"0.112.6",
-	"0.112.7"
+	"0.112.7",
+	"0.120.0",
+	"0.120.1",
+	"0.120.7"
 };
 
 static const char *version_ex[] =
@@ -66,7 +69,15 @@ static const char *version_ex[] =
 	".12"
 };
 
-
+static const char *revision_ex[] =
+{
+	"0", /*Ex version 0 has no Ex string at all*/
+	"1",
+	"2",
+	"3",
+	"4",
+	"5"
+};
 
 // just free memory
 void settings_stats_t::free_all()
@@ -189,10 +200,16 @@ void settings_experimental_general_stats_t::init( settings_t *sets )
 	INIT_BOOL( "allow_routing_on_foot", sets->get_allow_routing_on_foot());
 	INIT_BOOL("allow_airports_without_control_towers", sets->get_allow_airports_without_control_towers());
 	INIT_NUM("global_power_factor_percent", sets->get_global_power_factor_percent(), 0, 1000, gui_numberinput_t::AUTOLINEAR, false );
+	INIT_NUM("global_force_factor_percent", sets->get_global_force_factor_percent(), 0, 1000, gui_numberinput_t::AUTOLINEAR, false);
 	INIT_NUM("enforce_weight_limits", sets->get_enforce_weight_limits(), 0, 3, gui_numberinput_t::AUTOLINEAR, false );
 	INIT_NUM("max_diversion_tiles", sets->get_max_diversion_tiles(), 0, 65535, gui_numberinput_t::AUTOLINEAR, false );
 	INIT_NUM("way_degridation_fraction", sets->get_way_degridation_fraction(), 0, 40, gui_numberinput_t::AUTOLINEAR, false );
-
+	INIT_NUM("sighting_distance_meters", sets->get_sighting_distance_meters(), 0, 7500, gui_numberinput_t::AUTOLINEAR, false );
+	INIT_NUM("assumed_curve_radius_45_degrees", sets->get_assumed_curve_radius_45_degrees(), 0, 10000, gui_numberinput_t::AUTOLINEAR, false );
+	INIT_NUM("max_speed_drive_by_sight_kmh", sets->get_max_speed_drive_by_sight_kmh(), 0, 1000, gui_numberinput_t::AUTOLINEAR, false );
+	INIT_NUM("time_interval_seconds_to_clear", sets->get_time_interval_seconds_to_clear(), 0, 10000, gui_numberinput_t::AUTOLINEAR, false );
+	INIT_NUM("time_interval_seconds_to_caution", sets->get_time_interval_seconds_to_caution(), 0, 10000, gui_numberinput_t::AUTOLINEAR, false );
+	
 	SEPERATOR;
 	INIT_NUM("population_per_level", sets->get_population_per_level(), 1, 1000, 1, false);
 	INIT_NUM("visitor_demand_per_level", sets->get_visitor_demand_per_level(), 1, 1000, 1, false);
@@ -314,10 +331,18 @@ void settings_experimental_general_stats_t::read(settings_t *sets)
 	READ_BOOL( sets->set_allow_routing_on_foot);
 	READ_BOOL( sets->set_allow_airports_without_control_towers );
 	READ_NUM( sets->set_global_power_factor_percent );
+	READ_NUM( sets->set_global_force_factor_percent );
 	READ_NUM( sets->set_enforce_weight_limits );
 	READ_NUM_VALUE( sets->max_diversion_tiles );
 	READ_NUM_VALUE( sets->way_degridation_fraction );
-
+	READ_NUM_VALUE( sets->sighting_distance_meters );
+	sets->sighting_distance_tiles = sets->sighting_distance_meters / sets->meters_per_tile;
+	READ_NUM_VALUE( sets->assumed_curve_radius_45_degrees );
+	READ_NUM_VALUE( sets->max_speed_drive_by_sight_kmh );
+	sets->max_speed_drive_by_sight = kmh_to_speed(sets->max_speed_drive_by_sight_kmh);
+	READ_NUM_VALUE( sets->time_interval_seconds_to_clear );
+	READ_NUM_VALUE( sets->time_interval_seconds_to_caution );
+	
 	READ_NUM_VALUE(sets->population_per_level);
 	READ_NUM_VALUE(sets->visitor_demand_per_level);
 	READ_NUM_VALUE(sets->jobs_per_level);
@@ -540,7 +565,7 @@ void settings_experimental_revenue_stats_t::read(settings_t *sets)
 
 bool settings_general_stats_t::action_triggered(gui_action_creator_t *comp, value_t v)
 {
-	assert( comp==&savegame || comp==&savegame_ex ); (void)comp;
+	assert( comp==&savegame || comp==&savegame_ex || comp ==&savegame_ex_rev); (void)comp;
 
 	if(  v.i==-1  ) 
 	{
@@ -551,6 +576,10 @@ bool settings_general_stats_t::action_triggered(gui_action_creator_t *comp, valu
 		else if( comp==&savegame_ex )
 		{
 			savegame_ex.set_selection( 0 );
+		}
+		else if( comp == &savegame_ex_rev )
+		{
+			savegame_ex_rev.set_selection( 0 );
 		}
 	}
 	return true;
@@ -567,7 +596,7 @@ void settings_general_stats_t::init(settings_t const* const sets)
 	savegame.set_pos( scr_coord(0, ypos) );
 	savegame.set_size( scr_size(70, D_BUTTON_HEIGHT) );
 	for(  uint32 i=0;  i<lengthof(version);  i++  ) {
-		savegame.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( version[i]+2, COL_BLACK ) );
+		savegame.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( version[i]+2, SYSCOL_TEXT ) );
 		if(  strcmp(version[i],env_t::savegame_version_str)==0  ) {
 			savegame.set_selection( i );
 		}
@@ -602,22 +631,25 @@ void settings_general_stats_t::init(settings_t const* const sets)
 	INIT_BOOL( "ground_info", env_t::ground_info );
 	INIT_BOOL( "townhall_info", env_t::townhall_info );
 	INIT_BOOL( "only_single_info", env_t::single_info );
+	SEPERATOR
+	INIT_NUM( "compass_map_position", env_t::compass_map_position, 0, 16, gui_numberinput_t::AUTOLINEAR, false );
+	INIT_NUM( "compass_screen_position", env_t::compass_screen_position, 0, 16, gui_numberinput_t::AUTOLINEAR, false );
 
 	clear_dirty();
 
 	SEPERATOR
-	// combobox for Experimental savegame version
+	// comboboxes for Experimental savegame version and revision
 	savegame_ex.set_pos( scr_coord(2,ypos-2) );
 	savegame_ex.set_size( scr_size(70,D_BUTTON_HEIGHT) );
 	for(  int i=0;  i<lengthof(version_ex);  i++  ) 
 	{
 		if(i == 0)
 		{
-			savegame_ex.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( "0", COL_BLACK ) );
+			savegame_ex.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( "0", SYSCOL_TEXT ) );
 		}
 		else
 		{
-			savegame_ex.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( version_ex[i]+1, COL_BLACK ) );
+			savegame_ex.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( version_ex[i]+1, SYSCOL_TEXT ) );
 		}
 		if(  strcmp(version_ex[i],EXPERIMENTAL_VER_NR)==0  ) 
 		{
@@ -631,8 +663,36 @@ void settings_general_stats_t::init(settings_t const* const sets)
 	label.back()->set_pos( scr_coord( 76, label.back()->get_pos().y ) );
 	clear_dirty();
 
+	ypos+=5;
+	height = ypos;
+
+	savegame_ex_rev.set_pos( scr_coord(2,ypos-2) );
+	savegame_ex_rev.set_size( scr_size(70,D_BUTTON_HEIGHT) );
+	for(  int i=0;  i<lengthof(revision_ex);  i++  ) 
+	{
+		if(i == 0)
+		{
+			savegame_ex_rev.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( "0", SYSCOL_TEXT ) );
+		}
+		else
+		{
+			savegame_ex_rev.append_element( new gui_scrolled_list_t::const_text_scrollitem_t( revision_ex[i], SYSCOL_TEXT ) );
+		}
+		if(  strcmp(revision_ex[i],QUOTEME(EX_SAVE_MINOR))==0  ) 
+		{
+			savegame_ex_rev.set_selection( i );
+		}
+	}
+	savegame_ex_rev.set_focusable( false );
+	add_component( &savegame_ex_rev );
+	savegame_ex_rev.add_listener( this );
+	INIT_LB( "savegame Experimental revision" );
+	label.back()->set_pos( scr_coord( 76, label.back()->get_pos().y ) );
+	clear_dirty();
+
 	ypos+=105;
 	height = ypos;
+
 	set_size( settings_stats_t::get_size() );
 }
 
@@ -670,11 +730,19 @@ void settings_general_stats_t::read(settings_t* const sets)
 	READ_BOOL_VALUE( env_t::townhall_info );
 	READ_BOOL_VALUE( env_t::single_info );
 
+	READ_NUM_VALUE( env_t::compass_map_position );
+	READ_NUM_VALUE( env_t::compass_screen_position );
+
 	sets->calc_job_replenishment_ticks();
 
 	const int selected_ex = savegame_ex.get_selection();
 	if (0 <= selected_ex  &&  selected_ex < lengthof(version_ex)) {
 		env_t::savegame_ex_version_str = version_ex[ selected_ex ];
+	}
+
+	const int selected_ex_rev = savegame_ex_rev.get_selection();
+	if (0 <= selected_ex  &&  selected_ex < lengthof(revision_ex)) {
+		env_t::savegame_ex_revision_str = revision_ex[ selected_ex_rev ];
 	}
 }
 

@@ -61,7 +61,6 @@ void gui_fixedwidth_textarea_t::set_size(scr_size size)
  */
 void gui_fixedwidth_textarea_t::calc_display_text(const scr_coord offset, const bool draw)
 {
-	const bool unicode = translator::get_lang()->utf_encoded;
 	scr_coord_val x=0, word_x=0, y = 0;
 
 	const char* text(*buf);
@@ -81,7 +80,7 @@ void gui_fixedwidth_textarea_t::calc_display_text(const scr_coord offset, const 
 
 			// end of line?
 			size_t len = 0;
-			uint16 next_char = unicode ? utf8_to_utf16(p, &len) : *p++;
+			uint16 next_char = utf8_to_utf16(p, &len);
 			p += len;
 
 			if(next_char==0  ||  next_char=='\n') {
@@ -123,7 +122,7 @@ void gui_fixedwidth_textarea_t::calc_display_text(const scr_coord offset, const 
 
 		// start of new line or end of text
 		if(draw  &&  (line_end-line_start)!=0) {
-			display_text_proportional_len_clip( offset.x, offset.y+y, (const char *)line_start, ALIGN_LEFT | DT_CLIP, COL_BLACK, true, (size_t)(line_end - line_start) );
+			display_text_proportional_len_clip( offset.x, offset.y+y, (const char *)line_start, ALIGN_LEFT | DT_CLIP, SYSCOL_TEXT, true, (size_t)(line_end - line_start) );
 		}
 		y += LINESPACE;
 		// back to start of new line

@@ -425,6 +425,10 @@ left_to_right_graphs  = 1
 # Currently only supported with SDL2
 hide_keyboard = 0
 
+# 1=top, 2=vertical centre, 3=bottom, 4=left, 8=horizontal centre, 12=right
+# default for minimap is 1+12=13
+compass_screen_position = 0
+
 ################################### Finance settings ##################################
 #
 # These values are usually set in the pak files
@@ -594,6 +598,44 @@ citycar_way_wear_factor = 2
 # max length
 #river_max_length = 320
 
+# This is the distance in meters at which train drivers can see signals ahead.
+# Trains have to brake in time for signals which might be at danger, so this
+# distance affects train speed. 
+sighting_distance_meters = 250
+
+# This is the maximum speed at which rail (including narrow gauge, monorail and maglev)
+# vehicles may travel in the drive by sight working method. 0 = as fast as they can
+# stop in time with no other limit. Note that this does not apply to trams.
+
+max_speed_drive_by_sight_kmh = 35
+
+# The following settings apply to time interval signalling only.
+#
+# time_interval_seconds_to_clear is the time, in seconds, after a train has completely passed a time interval
+# signal that it will reset its aspect to clear.
+#
+# time_interval_seconds_to_caution is the time, in seconds, after a train has completely passed a time interval
+# signal that it will reset its aspect to caution.
+# 
+# Default: clear - 600 (10 minutes); caution - 300 (5 minutes)
+
+time_interval_seconds_to_clear = 600
+time_interval_seconds_to_caution = 300
+
+# Corners of greater than 45 degrees have their radius calculated. However, because of 
+# the rigid tile system in Simutrans, this produces unrealistic results when applied
+# to corners of 45 degrees. A value is thus specified here. This affects the speed
+# at which vehicles can take 45 degree corners. 
+#
+# If this is set to 0, 45 degree corners are treated as straight.
+# 
+# If this is set to 9999, adjacent pairs of degree corners are treated as half the
+# radius of a 90 degree corner (and non-adjacent pairs scaled according to the distance
+# between them). This is techincally correct but does not work well in Simutrans because
+# of the inability to have gentler corners. 
+#
+assumed_curve_radius_45_degrees = 1000
+
 ################################# Tree settings #################################
 #  please be careful in changing them, I spent lot of time finding optimals.
 #  those values have impact on no. of spawned trees -> memory consumption
@@ -647,11 +689,10 @@ starting_year = 1930
 starting_month = 1
 
 # Should month be shown in date?
-# 0=no, 1=yes
-# 2>=show day in japan format=2, us format=3, german=4
-# 5>=show no season but everything else in japan format=5, us format=5, german=6
+# (0=no, 1=yes, 2>=show day in japan format=2, us format=3, german=4, japanese no season=5, us no season=6, german no season = 7, hours/minutes scale = 8)
 # This is most useful, if you use longer months than the default length (see below)
-#show_month = 1
+# The hours/minutes scale shows the time in hours/minutes as used for determining journey times and other short times. It is the recommended setting. 
+show_month = 8
 
 # Global time multiplier (will be save with new games)
 # 2^bits_per_month = duration of a game month in microseconds real time
@@ -685,7 +726,7 @@ autosave = 0
 #display_height = 560
 
 # show full screen
-#fullscreen = 0
+fullscreen = 0
 
 # For versions of Simutrans compiled to work in a multithreaded system (which will improve
 # certain aspects of performance on multiple core/processor machines), this is the number

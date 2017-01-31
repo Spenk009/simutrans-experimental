@@ -140,6 +140,7 @@ public:
 		ENTERING_DEPOT,
 		REVERSING,
 		OUT_OF_RANGE,
+		EMERGENCY_STOP,
 		MAX_STATES
 	};
 
@@ -565,11 +566,6 @@ private:
 	*/
 	bool can_go_alte_richtung();
 
-	/**
-	 * remove all track reservations (trains only)
-	 */
-	void unreserve_route();
-
 	// Reserve the tiles on which the convoy is standing to prevent collisions.
 	void reserve_own_tiles();
 
@@ -613,6 +609,11 @@ private:
 	* @author hsiegeln
 	*/
 	koord3d home_depot;
+
+	/*
+	 * The position of the last signal passed by this convoy
+	 */
+	koord3d last_signal_pos;
 
 	// Helper function: used in init and replacing
 	void reset();
@@ -825,6 +826,11 @@ public:
 	* @author Hj. Malthaner
 	*/
 	void hat_gehalten(halthandle_t halt);
+
+	/**
+	 * remove all track reservations (trains only)
+	 */
+	void unreserve_route();
 
 	route_t* get_route() { return &route; }
 	route_t* access_route() { return &route; }
@@ -1167,6 +1173,10 @@ public:
 	void set_maximum_signal_speed(sint32 value) { max_signal_speed = value; }
 	sint32 get_max_signal_speed() const { return max_signal_speed; }
 
+	inline void set_wait_lock(sint32 value) { wait_lock = value; }
+
+	bool check_destination_reverse(route_t* current_route = NULL, route_t* target_rt = NULL); 
+
 private:
 	journey_times_map average_journey_times;
 public:
@@ -1325,10 +1335,13 @@ public:
 
 	inline koord3d get_home_depot() { return home_depot; }
 
+	inline void set_last_signal_pos(koord3d p) { last_signal_pos = p; }
+	inline koord3d get_last_signal_pos() const { return last_signal_pos; }
+
 	/**
 	 * this give the index of the next signal or the end of the route
 	 * convois will slow down before it, if this is not a waypoint or the cannot pass
-	 * The slowdown ist done by the vehicle routines
+	 * The slowdown is done by the vehicle routines
 	 * @author prissi
 	 */
 	uint16 get_next_stop_index() const {return next_stop_index;}

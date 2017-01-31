@@ -24,7 +24,14 @@
 #include "../besch/bruecke_besch.h"
 #include "../boden/wege/strasse.h"
 #include "../obj/gebaeude.h"
+#include "../obj/roadsign.h"
 #include "environment.h"
+
+// define USE_VALGRIND_MEMCHECK to make
+// valgrind aware of the memory pool for A* nodes
+#ifdef USE_VALGRIND_MEMCHECK
+#include <valgrind/memcheck.h>
+#endif
 
 
 // if defined, print some profiling informations into the file
@@ -234,6 +241,10 @@ bool route_t::find_route(karte_t *welt, const koord3d start, test_driver_t *tdri
 	ANode *nodes;
 	uint8 ni = GET_NODES(&nodes);
 
+#ifdef USE_VALGRIND_MEMCHECK
+	VALGRIND_MAKE_MEM_UNDEFINED(nodes, sizeof(ANode)*MAX_STEP);
+#endif
+
 	uint32 step = 0;
 	ANode* tmp = &nodes[step++];
 	if (route_t::max_used_steps < step)
@@ -243,8 +254,9 @@ bool route_t::find_route(karte_t *welt, const koord3d start, test_driver_t *tdri
 	tmp->parent = NULL;
 	tmp->gr = g;
 	tmp->count = 0;
-	tmp->g = 0;
 	tmp->f = 0;
+	tmp->g = 0;
+	tmp->dir = 0;
 
 	// start in open
 	queue.insert(tmp);
@@ -383,7 +395,7 @@ bool route_t::find_route(karte_t *welt, const koord3d start, test_driver_t *tdri
 
 				weg_t* w = to->get_weg(tdriver->get_waytype());
 				
-				if (enforce_weight_limits > 1 && w != NULL)
+				if(enforce_weight_limits > 1 && w != NULL)
 				{
 					// Bernd Gabriel, Mar 10, 2010: way limit info
 					const uint32 way_max_axle_load = w->get_max_axle_load();
@@ -408,6 +420,16 @@ bool route_t::find_route(karte_t *welt, const koord3d start, test_driver_t *tdri
 					}
 				}
 
+				if(flags == choose_signal && w->has_sign())
+				{
+					// Do not traverse routes with end of choose signs
+					 roadsign_t* rs = welt->lookup(w->get_pos())->find<roadsign_t>();
+					 if(rs->get_besch()->is_end_choose_signal())
+					 {
+						 continue;
+					 }
+				}
+
 				// not in there or taken out => add new
 				ANode* k = &nodes[step++];
 				if (route_t::max_used_steps < step)
@@ -420,23 +442,36 @@ bool route_t::find_route(karte_t *welt, const koord3d start, test_driver_t *tdri
 				k->count = tmp->count+1;
 				k->f = 0;
 				k->g = tmp->g + tdriver->get_cost(to, max_khm, gr->get_pos().get_2d());
+				k->ribi_from = ribi_t::nsow[r];
 
-				uint8 current_dir;
+				uint8 current_dir = ribi_t::nsow[r];
 				if(tmp->parent!=NULL) {
-					current_dir = ribi_t::nsow[r] | tmp->ribi_from;
+					current_dir |= tmp->ribi_from;
 					if(tmp->dir!=current_dir) {
-						k->g += 3;
-						if(tmp->parent->dir!=tmp->dir  &&  tmp->parent->parent!=NULL) {
+						k->g += 3; 
+						if(ribi_t::ist_exakt_orthogonal(tmp->dir,current_dir))
+						{
+							if(flags == choose_signal)
+							{
+								// In the case of a choose signal, this will in some situations allow trains to
+								// route in very suboptimal ways if a route is part blocked: see here for an explanation:
+								// http://forum.simutrans.com/index.php?topic=14839.msg146645#msg146645
+								continue;
+							}
+							else
+							{
+								// discourage v turns heavily
+								k->g += 25;  
+							}
+						}
+						else if(tmp->parent->dir!=tmp->dir  &&  tmp->parent->parent!=NULL)
+						{
 							// discourage 90° turns
 							k->g += 10;
 						}
-						else if(ribi_t::ist_exakt_orthogonal(tmp->dir,current_dir)) {
-							// discourage v turns heavily
-							k->g += 25;
-						}
 					}
-
 				}
+				k->dir = current_dir;
 
 				// insert here
 				queue.insert(k);
@@ -527,8 +562,6 @@ bool route_t::intern_calc_route(karte_t *welt, const koord3d start, const koord3
 	const bool is_airplane = tdriver->get_waytype()==air_wt;
 	const uint32 cost_upslope = tdriver->get_cost_upslope();
 
-	grund_t *to;
-
 	/* On water we will try jump point search (jps):
 	 * - If going straight do not turn, only if near an obstacle.
 	 * - If going diagonally only proceed in the two directions defining the diagonal.
@@ -571,6 +604,10 @@ bool route_t::intern_calc_route(karte_t *welt, const koord3d start, const koord3
 
 	ANode *nodes;
 	uint8 ni = GET_NODES(&nodes);
+
+#ifdef USE_VALGRIND_MEMCHECK
+	VALGRIND_MAKE_MEM_UNDEFINED(nodes, sizeof(ANode)*MAX_STEP);
+#endif
 
 	uint32 step = 0;
 	ANode* tmp = &nodes[step];
@@ -649,7 +686,7 @@ bool route_t::intern_calc_route(karte_t *welt, const koord3d start, const koord3
 				continue;
 			}
 
-			to = NULL;
+			grund_t *to = NULL;
 			if(is_airplane) 
 			{
 				const planquadrat_t *pl=welt->access(gr->get_pos().get_2d()+koord(next_ribi[r]));
@@ -1095,7 +1132,8 @@ void route_t::postprocess_water_route(karte_t *welt)
 			{
 				// Do not go on a tile where a one way sign forbids going.
 				// This saves time and fixed the bug that a one way sign on the final tile was ignored.
-				ribi_t::ribi go_dir = gr->get_weg(wegtyp)->get_ribi_maske();
+				weg_t* wg = gr->get_weg(wegtyp);
+				ribi_t::ribi go_dir = wg ? wg->get_ribi_maske(): ribi_t::alle;
 				if((ribi & go_dir) != 0)
 				{
 					if(tdriver->get_waytype() == track_wt || tdriver->get_waytype() == narrowgauge_wt || tdriver->get_waytype() == maglev_wt || tdriver->get_waytype() == tram_wt || tdriver->get_waytype() == monorail_wt)

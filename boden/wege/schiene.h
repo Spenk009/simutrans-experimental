@@ -65,7 +65,7 @@ public:
 	* true, if this rail can be reserved
 	* @author prissi
 	*/
-	bool can_reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t = block) const 
+	bool can_reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t = block, bool check_directions_at_junctions = false) const 
 	{ 
 		if(t == block)
 		{
@@ -73,12 +73,15 @@ public:
 		}
 		if(t == directional)
 		{
-			return !reserved.is_bound() || c == reserved || type == priority || (dir == direction || dir == ribi_t::alle);
+			return !reserved.is_bound() || c == reserved || type == priority || (dir == direction || dir == ribi_t::alle) || (!check_directions_at_junctions && is_junction());
 		}
 		if(t == priority)
 		{
 			return !reserved.is_bound() || c == reserved; // TODO: Obtain the priority data from the convoy here and comapre it.
 		}
+
+		// Fail with non-standard reservation type
+		return false;
 	}
 
 	/**
@@ -95,7 +98,7 @@ public:
 	* true, then this rail was reserved
 	* @author prissi
 	*/
-	bool reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t = block);
+	bool reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t = block, bool check_directions_at_junctions = false);
 
 	/**
 	* releases previous reservation
@@ -121,6 +124,8 @@ public:
 	convoihandle_t get_reserved_convoi() const { return reserved; }
 
 	void rdwr(loadsave_t *file);
+
+	void rotate90();
 
 	/**
 	 * if a function return here a value with TRANSPARENT_FLAGS set
@@ -151,7 +156,7 @@ public:
 	/*
 	 * to show reservations if needed
 	 */
-	virtual image_id get_outline_image() const { return weg_t::get_bild(); }
+	virtual image_id get_outline_image() const { return weg_t::get_image(); }
 };
 
 

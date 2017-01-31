@@ -125,7 +125,7 @@ static void show_times(karte_t *welt, karte_ansicht_t *view)
 	dbg->message( "show_times()", "simple profiling of drawing routines" );
  	int i;
 
-	image_id img = grund_besch_t::ausserhalb->get_bild(0,0);
+	image_id img = grund_besch_t::ausserhalb->get_image(0,0);
 
  	long ms = dr_time();
 	for (i = 0;  i < 6000000;  i++) {
@@ -669,7 +669,9 @@ int simu_main(int argc, char** argv)
 
 	if(xml_settings_found)  
 	{
-		if(  file.get_version() > loadsave_t::int_version(SAVEGAME_VER_NR, NULL, NULL).version || file.get_experimental_version() > loadsave_t::int_version(EXPERIMENTAL_SAVEGAME_VERSION, NULL, NULL).experimental_version) 
+		if(file.get_version() > loadsave_t::int_version(SAVEGAME_VER_NR, NULL, NULL).version 
+			|| file.get_experimental_version() > loadsave_t::int_version(EXPERIMENTAL_SAVEGAME_VERSION, NULL, NULL).experimental_version
+			|| file.get_experimental_revision() > EX_SAVE_MINOR)
 		{
 			// too new => remove it
 			file.close();
@@ -1288,7 +1290,7 @@ DBG_MESSAGE("simmain","demo file not found at %s",buf.get_str() );
 #endif
 
 	welt->reset_timer();
-	if(  !env_t::networkmode  &&  !env_t::server  ) {
+	if(  !env_t::networkmode  &&  !env_t::server  &&  new_world  ) {
 #ifdef display_in_main
 		view->display(true);
 		intr_refresh_display(true);
@@ -1371,7 +1373,7 @@ DBG_MESSAGE("simmain","demo file not found at %s",buf.get_str() );
 
 	// save setting ...
 	chdir( env_t::user_dir );
-	if(file.wr_open(xml_filename,loadsave_t::xml,"settings only/",SAVEGAME_VER_NR, EXPERIMENTAL_VER_NR)) 
+	if(file.wr_open(xml_filename,loadsave_t::xml,"settings only/",SAVEGAME_VER_NR, EXPERIMENTAL_VER_NR, EXPERIMENTAL_REVISION_NR)) 
 	{
 		env_t::rdwr(&file);
 		env_t::default_settings.rdwr(&file);

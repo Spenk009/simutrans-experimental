@@ -386,6 +386,7 @@ settings_t::settings_t() :
 	// Global power factor
 	// @author: jamespetts
 	global_power_factor_percent = 100;
+	global_force_factor_percent = 100;
 
 	avoid_overcrowding = false;
 
@@ -502,6 +503,15 @@ settings_t::settings_t() :
 	way_wear_power_factor_rail_type = 1;
 	standard_axle_load = 8;
 	citycar_way_wear_factor = 2;
+
+	sighting_distance_meters = 250;
+	assumed_curve_radius_45_degrees = 1000;
+
+	max_speed_drive_by_sight_kmh = 0;
+	max_speed_drive_by_sight = 0;
+
+	time_interval_seconds_to_clear = 600;
+	time_interval_seconds_to_caution = 300;
 }
 
 void settings_t::set_default_climates()
@@ -1585,7 +1595,33 @@ void settings_t::rdwr(loadsave_t *file)
 			file->rdwr_long(way_wear_power_factor_rail_type);
 			file->rdwr_short(standard_axle_load); 
 			file->rdwr_long(citycar_way_wear_factor);
+			if(file->get_experimental_revision() >= 2)
+			{
+				file->rdwr_long(sighting_distance_meters);
+				sighting_distance_tiles = sighting_distance_meters / meters_per_tile;
+				file->rdwr_long(assumed_curve_radius_45_degrees);
+			}
+			if(file->get_experimental_revision() >= 3)
+			{
+				file->rdwr_long(max_speed_drive_by_sight_kmh); 
+				max_speed_drive_by_sight = kmh_to_speed(max_speed_drive_by_sight_kmh);
+			}
 #endif
+			if(file->get_experimental_revision() >= 5)
+			{
+				file->rdwr_short(global_force_factor_percent);
+			}
+
+			if(file->get_experimental_revision() >= 6)
+			{
+				file->rdwr_long(time_interval_seconds_to_clear);
+				file->rdwr_long(time_interval_seconds_to_caution);
+			}
+			else
+			{
+				time_interval_seconds_to_clear = 600;
+				time_interval_seconds_to_caution = 300;
+			}
 		}
 		else
 		{
@@ -1693,6 +1729,9 @@ void settings_t::parse_simuconf(tabfile_t& simuconf, sint16& disp_width, sint16&
 	env_t::ground_info = contents.get_int("ground_info", env_t::ground_info) != 0;
 	env_t::townhall_info = contents.get_int("townhall_info", env_t::townhall_info) != 0;
 	env_t::single_info = contents.get_int("only_single_info", env_t::single_info );
+
+	env_t::compass_map_position = contents.get_int("compass_map_position", env_t::compass_map_position );
+	env_t::compass_screen_position = contents.get_int("compass_screen_position", env_t::compass_screen_position );
 
 	env_t::window_snap_distance = contents.get_int("window_snap_distance", env_t::window_snap_distance );
 	env_t::window_buttons_right = contents.get_int("window_buttons_right", env_t::window_buttons_right );
@@ -2295,6 +2334,7 @@ void settings_t::parse_simuconf(tabfile_t& simuconf, sint16& disp_width, sint16&
 	// Global power factor
 	// @author: jamespetts
 	global_power_factor_percent = contents.get_int("global_power_factor_percent", global_power_factor_percent);
+	global_force_factor_percent = contents.get_int("global_force_factor_percent", global_force_factor_percent); 
 
 	// How and whether weight limits are enforced.
 	// @author: jamespetts
@@ -2420,6 +2460,18 @@ void settings_t::parse_simuconf(tabfile_t& simuconf, sint16& disp_width, sint16&
 	way_wear_power_factor_rail_type = contents.get_int("way_wear_power_factor_rail_type", way_wear_power_factor_rail_type);
 	standard_axle_load = contents.get_int("standard_axle_load", standard_axle_load);
 	citycar_way_wear_factor = contents.get_int("citycar_way_wear_factor", citycar_way_wear_factor);
+
+	sighting_distance_meters = contents.get_int("sighting_distance_meters", sighting_distance_meters); 
+	sighting_distance_tiles = sighting_distance_meters / meters_per_tile;
+
+	assumed_curve_radius_45_degrees = contents.get_int("assumed_curve_radius_45_degrees", assumed_curve_radius_45_degrees);
+
+	max_speed_drive_by_sight_kmh = contents.get_int("max_speed_drive_by_sight_kmh", max_speed_drive_by_sight_kmh);
+	max_speed_drive_by_sight = kmh_to_speed(max_speed_drive_by_sight_kmh);
+
+	time_interval_seconds_to_clear = contents.get_int("time_interval_seconds_to_clear", time_interval_seconds_to_clear);
+	time_interval_seconds_to_caution = contents.get_int("time_interval_seconds_to_caution", time_interval_seconds_to_caution);
+	
 
 	// OK, this is a bit complex.  We are at risk of loading the same livery schemes repeatedly, which
 	// gives duplicate livery schemes and utter confusion.

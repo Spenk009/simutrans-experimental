@@ -260,12 +260,12 @@ void weg_t::set_besch(const weg_besch_t *b, bool from_saved_game)
 			roadsign_t* rs = gr->find<roadsign_t>();
 			if(!rs)
 			{
-				rs = get_signal(ribi_t::alle); 
+				rs =  gr->find<signal_t>();
 			} 
 			if(rs && rs->get_besch()->is_retired(welt->get_timeline_year_month()))
 			{
 				// Upgrade obsolete signals and signs when upgrading the underlying way if possible.
-				rs->upgrade(); 
+				rs->upgrade(welt->lookup_kartenboden(get_pos().get_2d())->get_hoehe() != get_pos().z); 
 			}
 		}
 	}
@@ -486,7 +486,7 @@ void weg_t::info(cbuffer_t & buf, bool is_bridge) const
 		bool is_current = !time || replacement_way->get_intro_year_month() <= time && time < replacement_way->get_retire_year_month();
 		if(!is_current)
 		{
-			buf.append(translator::translate(wegbauer_t::weg_search(replacement_way->get_waytype(), replacement_way->get_topspeed(), (const sint32)replacement_way->get_axle_load(), time, (weg_t::system_type)replacement_way->get_styp())->get_name()));
+			buf.append(translator::translate(wegbauer_t::weg_search(replacement_way->get_waytype(), replacement_way->get_topspeed(), (const sint32)replacement_way->get_axle_load(), time, (weg_t::system_type)replacement_way->get_styp(), replacement_way->get_wear_capacity())->get_name()));
 		}
 		else
 		{
@@ -678,8 +678,17 @@ bool weg_t::check_season(const bool calc_only_season_change)
 		return true;
 	}
 
-	if(  is_diagonal()  ) {
-		set_images( image_diagonal, ribi, snow );
+	if(  is_diagonal()  ) 
+	{
+		if( besch->get_diagonal_bild_nr(ribi, snow) != IMG_LEER  ||
+			besch->get_diagonal_bild_nr(ribi, snow, true) != IMG_LEER) 
+		{
+			set_images(image_diagonal, ribi, snow);
+		}
+		else
+		{
+			set_images(image_flat, ribi, snow);
+		}
 	}
 	else if(  ribi_t::is_threeway( ribi )  &&  besch->has_switch_bild()  ) {
 		// there might be two states of the switch; remember it when changing seasons
@@ -699,6 +708,7 @@ bool weg_t::check_season(const bool calc_only_season_change)
 
 	return true;
 }
+
 
 
 #ifdef MULTI_THREAD
@@ -1032,7 +1042,7 @@ bool weg_t::renew()
 		bool is_current = !time || (replacement_way->get_intro_year_month() <= time && time < replacement_way->get_retire_year_month());
 		if(!is_current)
 		{
-			replacement_way = wegbauer_t::weg_search(replacement_way->get_waytype(), replacement_way->get_topspeed(), (const sint32)replacement_way->get_axle_load(), time, (weg_t::system_type)replacement_way->get_styp());
+			replacement_way = wegbauer_t::weg_search(replacement_way->get_waytype(), replacement_way->get_topspeed(), (const sint32)replacement_way->get_axle_load(), time, (weg_t::system_type)replacement_way->get_styp(), replacement_way->get_wear_capacity());
 		}
 		
 		if(!replacement_way)

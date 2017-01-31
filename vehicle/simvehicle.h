@@ -164,7 +164,7 @@ public:
 	uint32 do_drive(uint32 dist);	// basis movement code
 
 	inline void set_bild( image_id b ) { image = b; }
-	virtual image_id get_bild() const {return image;}
+	virtual image_id get_image() const {return image;}
 
 	sint8 get_hoff() const;
 	uint8 get_steps() const {return steps;} // number of steps pass on the current tile.
@@ -398,6 +398,11 @@ public:
 	* @author Hj. Malthaner
 	*/
 	image_id get_base_image() const { return besch->get_base_image(current_livery.c_str()); }
+
+	/**
+	 * @return image with base direction and freight image taken from loaded cargo
+	 */
+	image_id get_loaded_image() const;
 
 	/**
 	* @return vehicle description object
@@ -714,7 +719,7 @@ protected:
 
 	void enter_tile(grund_t*);
 
-	sint32 activate_choose_signal(uint16 start_index, uint16 &next_signal_index);
+	sint32 activate_choose_signal(uint16 start_index, uint16 &next_signal_index, uint32 brake_steps, uint16 modified_sighting_distance_tiles, route_t* route);
 	
 	working_method_t working_method;
 
@@ -740,7 +745,7 @@ public:
 	// reserves or un-reserves all blocks and returns the handle to the next block (if there)
 	// returns true on successful reservation (the specific number being the number of blocks ahead clear,
 	// needed for setting signal aspects in some cases).
-	sint32 block_reserver(route_t *route, uint16 start_index, uint16 &next_signal, int signal_count, bool reserve, bool force_unreserve, bool is_choosing = false, bool is_from_token = false, bool is_from_starter = false, bool is_from_directional = false);
+	sint32 block_reserver(route_t *route, uint16 start_index, uint16 modified_sighting_distance_tiles, uint16 &next_signal, int signal_count, bool reserve, bool force_unreserve, bool is_choosing = false, bool is_from_token = false, bool is_from_starter = false, bool is_from_directional = false, uint32 brake_steps = 1);
 
 	void leave_tile();
 
@@ -999,7 +1004,7 @@ public:
 	void force_land() { flying_height = 0; target_height = 0; state = taxiing_to_halt; }
 
 	// image: when flying empty, on ground the plane
-	virtual image_id get_bild() const {return !is_on_ground() ? IMG_LEER : image;}
+	virtual image_id get_image() const {return !is_on_ground() ? IMG_LEER : image;}
 
 	// image: when flying the shadow, on ground empty
 	virtual image_id get_outline_image() const {return !is_on_ground() ? image : IMG_LEER;}

@@ -176,8 +176,8 @@ const weg_besch_t* wegbauer_t::weg_search(const waytype_t wtyp, const sint32 spe
 			(test->get_styp()==system_type  ||  system_type==weg_t::type_all))  ||  (test->get_wtyp()==track_wt  &&  test->get_styp()==weg_t::type_tram  &&  wtyp==tram_wt))
 			&&  test->get_cursor()->get_bild_nr(1)!=IMG_LEER  ) 
 		{
-				bool test_allowed = test->get_intro_year_month()<=time  &&  time<test->get_retire_year_month() && !test->is_mothballed();
-				if(  !best_allowed  ||  time==0  ||  test_allowed  ) 
+				bool test_allowed = (time == 0 || (test->get_intro_year_month() <= time && time < test->get_retire_year_month())) && !test->is_mothballed();
+				if(!best_allowed || test_allowed) 
 				{
 					if(  best==NULL  ||
 						( best->get_topspeed() <  test->get_topspeed()  &&  test->get_topspeed() <=     speed_limit  )    || // closer to desired speed (from the low end)
@@ -197,28 +197,42 @@ const weg_besch_t* wegbauer_t::weg_search(const waytype_t wtyp, const sint32 spe
 // Finds a way with a given speed *and* weight limit
 // for a given way type.
 // @author: jamespetts (slightly adapted from the standard version with just speed limit)
-const weg_besch_t* wegbauer_t::weg_search(const waytype_t wtyp, const sint32 speed_limit, const uint32 weight_limit, const uint16 time, const weg_t::system_type system_type)
+const weg_besch_t* wegbauer_t::weg_search(const waytype_t wtyp, const sint32 speed_limit, const uint32 weight_limit, const uint16 time, const weg_t::system_type system_type, const uint32 wear_capacity_limit)
 {
 	const weg_besch_t* best = NULL;
+	bool best_allowed = false; // Does the best way fulfill the timeline?
 	FOR(stringhashtable_tpl<weg_besch_t*>, const& iter, alle_wegtypen)
 	{
 		const weg_besch_t* const test = iter.value;
-		bool best_allowed = false; // Does the best way fulfill the timeline?
-		if(  ((test->get_wtyp()==wtyp  &&
-			     (test->get_styp()==system_type  ||  system_type==weg_t::type_all))  ||  (test->get_wtyp()==track_wt  &&  test->get_styp()==weg_t::type_tram  &&  wtyp==tram_wt))
-			     &&  test->get_cursor()->get_bild_nr(1)!=IMG_LEER  ) 
+		if(((test->get_wtyp() == wtyp
+			&& (test->get_styp() == system_type ||
+				 system_type == weg_t::type_all)) || 
+				 (test->get_wtyp() == track_wt &&  
+				 test->get_styp() == weg_t::type_tram &&  
+				 wtyp == tram_wt))
+			     && test->get_cursor()->get_bild_nr(1) != IMG_LEER) 
 		{
-			bool test_allowed = test->get_intro_year_month() <= time && time < test->get_retire_year_month();
-			if(  best == NULL  ||  time == 0  ||  test_allowed) 
+			bool test_allowed = time == 0 || (test->get_intro_year_month() <= time && time < test->get_retire_year_month());
+
+			const sint32 test_topspeed = test->get_topspeed();
+			const uint32 test_max_axle_load = test->get_max_axle_load();
+			const uint32 test_wear_capacity = test->get_wear_capacity();
+
+			if(best == NULL || test_allowed) 
 			{
-				if(  best == NULL ||
-						((best->get_topspeed() < speed_limit && test->get_topspeed() >= speed_limit) ||
-						(best->get_max_axle_load() < weight_limit && test->get_max_axle_load() >= weight_limit))	||		
-						((test->get_topspeed() <=  speed_limit && best->get_topspeed() < test->get_topspeed()) ||	
-						(((test->get_max_axle_load() <=  weight_limit && best->get_max_axle_load() < test->get_max_axle_load())))) ||
-						((best->get_topspeed() > speed_limit && test->get_topspeed() < best->get_topspeed()) ||		
-						(((best->get_max_axle_load() > weight_limit) && (test->get_max_axle_load()) < best->get_max_axle_load()))) ||
-						(time!=0  &&  !best_allowed  &&  test_allowed)
+				if(best == NULL ||
+						((best->get_topspeed() < speed_limit && test_topspeed >= speed_limit) ||
+						(best->get_max_axle_load() < weight_limit && test_max_axle_load >= weight_limit) ||
+						(best->get_wear_capacity() < wear_capacity_limit && test_wear_capacity >= wear_capacity_limit)) ||
+
+						((test_topspeed <= speed_limit && best->get_topspeed() < test_topspeed) ||	
+						(test_max_axle_load <= weight_limit && best->get_max_axle_load() < test_max_axle_load) ||
+						(test->get_wear_capacity() <= wear_capacity_limit && best->get_wear_capacity() < test->get_wear_capacity())) ||
+
+						((best->get_preis() > test->get_preis() && test_topspeed >= speed_limit && test_max_axle_load >= weight_limit && test->get_wear_capacity() >= wear_capacity_limit) ||		
+						((best->get_maintenance() > test->get_maintenance() && test_topspeed >= speed_limit && test_max_axle_load >= weight_limit && test_wear_capacity >= wear_capacity_limit))) ||	
+
+						(time !=0 && !best_allowed && test_allowed)
 					) 
 				{
 					best = test;
@@ -1197,17 +1211,20 @@ void wegbauer_t::check_for_bridge(const grund_t* parent_from, const grund_t* fro
 		&&  brueckenbauer_t::ist_ende_ok(player, from, besch->get_wtyp(),ribi_t::rueckwaerts(ribi_typ(zv)))  ) {
 		// Try a bridge.
 		const sint32 cost_difference=besch->get_wartung()>0 ? (bruecke_besch->get_wartung()*4l+3l)/besch->get_wartung() : 16;
-		const char *error;
 		// try eight possible lengths ..
-		koord3d end;
-		const grund_t* gr_end;
 		uint32 min_length = 1;
 		for (uint8 i = 0; i < 8 && min_length <= welt->get_settings().way_max_bridge_len; ++i) {
 			sint8 bridge_height;
-			end = brueckenbauer_t::finde_ende( player, from->get_pos(), zv, bruecke_besch, error, bridge_height, true, min_length );
-			gr_end = welt->lookup(end);
+			const char *error = NULL;
+			koord3d end = brueckenbauer_t::finde_ende( player, from->get_pos(), zv, bruecke_besch, error, bridge_height, true, min_length );
+			const grund_t* gr_end = welt->lookup(end);
+			if(  gr_end == NULL) {
+				// no valid end point found
+				min_length++;
+				continue;
+			}
 			uint32 length = koord_distance(from->get_pos(), end);
-			if(  gr_end  &&  !error  &&  !ziel.is_contained(end)  &&  brueckenbauer_t::ist_ende_ok(player, gr_end, besch->get_wtyp(), ribi_typ(zv))  &&  length <= welt->get_settings().way_max_bridge_len  ) {
+			if(!ziel.is_contained(end)  &&  brueckenbauer_t::ist_ende_ok(player, gr_end, besch->get_wtyp(), ribi_typ(zv))) {
 				// If there is a slope on the starting tile, it's taken into account in is_allowed_step, but a bridge will be flat!
 				sint8 num_slopes = (from->get_grund_hang() == hang_t::flach) ? 1 : -1;
 				// On the end tile, we haven't to subtract way_count_slope, since is_allowed_step isn't called with this tile.
@@ -2546,7 +2563,7 @@ void wegbauer_t::baue_schiene()
 					if(  gr->has_two_ways()  &&  besch->get_styp()==7  &&  weg->get_besch()->get_styp() != 7  ) {
 						if(  crossing_t *cr = gr->find<crossing_t>(2)  ) {
 							// change to tram track
-							cr->mark_image_dirty( cr->get_bild(), 0);
+							cr->mark_image_dirty( cr->get_image(), 0);
 							cr->cleanup(player);
 							delete cr;
 							change_besch = true;

@@ -7,6 +7,7 @@
 #include "../utils/simrandom.h"
 #include "../simcolor.h"
 #include "../simmesg.h"
+#include "../display/simgraph.h"
 
 sint8 env_t::pak_tile_height_step = 16;
 sint8 env_t::pak_height_conversion_factor = 1;
@@ -21,6 +22,7 @@ plainstring env_t::default_theme;
 const char *env_t::user_dir = 0;
 const char *env_t::savegame_version_str = SAVEGAME_VER_NR;
 const char *env_t::savegame_ex_version_str = EXPERIMENTAL_VER_NR;
+const char *env_t::savegame_ex_revision_str = EXPERIMENTAL_REVISION_NR;
 bool env_t::straight_way_without_control = false;
 bool env_t::networkmode = false;
 bool env_t::restore_UI = false;
@@ -141,8 +143,10 @@ uint8 env_t::front_window_text_color;
 uint8 env_t::bottom_window_bar_color;
 uint8 env_t::bottom_window_text_color;
 
-bool env_t::hide_keyboard = false;
+uint16 env_t::compass_map_position;
+uint16 env_t::compass_screen_position;
 
+bool env_t::hide_keyboard = false;
 
 // Hajo: Define default settings.
 void env_t::init()
@@ -192,6 +196,7 @@ void env_t::init()
 
 	savegame_version_str = SAVEGAME_VER_NR;
 	savegame_ex_version_str = EXPERIMENTAL_VER_NR;
+	savegame_ex_revision_str = EXPERIMENTAL_REVISION_NR;
 
 	show_month = DATE_FMT_US;
 
@@ -248,6 +253,11 @@ void env_t::init()
 	front_window_text_color = COL_WHITE; // 215
 	bottom_window_bar_color = 4;
 	bottom_window_text_color = 209;	// dark grey
+
+	// upper right
+	compass_map_position = ALIGN_RIGHT|ALIGN_TOP;
+	// lower right
+	compass_screen_position = 0, // disbale, other could be ALIGN_RIGHT|ALIGN_BOTTOM;
 
 	// Listen on all addresses by default
 	listen.append_unique("::");

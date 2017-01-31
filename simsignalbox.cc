@@ -59,21 +59,16 @@ signalbox_t::~signalbox_t()
 		{
 			continue;
 		}
-		weg_t* way = gr->get_weg_nr(0);
 
-		if(!way || !way->get_signal(ribi_t::alle))
-		{
-			way = gr->get_weg_nr(1);
-		}
-
-		if(!way|| !way->get_signal(ribi_t::alle))
+		signal_t* s = gr->find<signal_t>();
+		if(!s)
 		{
 			continue;
 		}
-		signal_t* s = way->get_signal(ribi_t::alle);
 		s->set_signalbox(koord3d::invalid);
 		s->cleanup(get_owner());
 		delete s;
+		weg_t* way = gr->get_weg_nr(0);
 		way->count_sign();
 	}
 	all_signalboxes.remove(this);
@@ -83,28 +78,6 @@ signalbox_t::~signalbox_t()
 		welt->remove_building_from_world_list(this);
 		// No need to remove this from the city statistics here, as this will be done by the gebaeude_t parent object.
 	}
-}
-
-signal_t* signalbox_t::get_signal_from_location(koord3d k)
-{
-	grund_t* gr = welt->lookup(k);
-	if(!gr)
-	{
-		return NULL;
-	}
-	weg_t* way = gr->get_weg_nr(0);
-
-	if(!way || !way->get_signal(ribi_t::alle))
-	{
-		way = gr->get_weg_nr(1);
-	}
-
-	if(!way|| !way->get_signal(ribi_t::alle))
-	{
-		return  NULL;
-	}
-	signal_t* s = way->get_signal(ribi_t::alle);
-	return s;
 }
 
 void signalbox_t::add_to_world_list(bool lock)
@@ -180,7 +153,7 @@ bool signalbox_t::can_add_signal(const roadsign_besch_t* b) const
 
 	if(group) // A signal with a group of 0 needs no signalbox and does not work with signalboxes
 	{
-		uint32 my_groups = get_tile()->get_besch()->get_clusters();
+		uint32 my_groups = get_first_tile()->get_tile()->get_besch()->get_clusters();
 		if(my_groups & group)
 		{
 			// The signals form part of a matching group: allow addition
@@ -202,7 +175,7 @@ bool signalbox_t::can_add_signal(const signal_t* s) const
 
 bool signalbox_t::can_add_more_signals() const
 {
-	return signals.get_count() < get_tile()->get_besch()->get_capacity();
+	return signals.get_count() < get_first_tile()->get_tile()->get_besch()->get_capacity();
 }
 
 bool signalbox_t::transfer_signal(signal_t* s, signalbox_t* sb)
@@ -211,6 +184,15 @@ bool signalbox_t::transfer_signal(signal_t* s, signalbox_t* sb)
 	{
 		return false;
 	}
+
+	if(!s->get_besch()->get_working_method() != moving_block)
+	{
+		if((s->get_besch()->get_max_distance_to_signalbox() / welt->get_settings().get_meters_per_tile()) < shortest_distance(s->get_pos().get_2d(), sb->get_pos().get_2d()))
+		{
+			return false;
+		}
+	}
+
 	if(add_signal(s))
 	{
 		sb->remove_signal(s);  
@@ -238,12 +220,22 @@ koord signalbox_t::transfer_all_signals(signalbox_t* sb)
 	}
 	FOR(slist_tpl<koord3d>, k, duplicate_signals_list)
 	{
-		signal_t* s = get_signal_from_location(k); 
+		signal_t* s = welt->lookup(k)->find<signal_t>();
 		if(!s)
 		{
 			dbg->error("signalbox_t::transfer_all_signals(signalbox_t* sb)", "Signal cannot be retrieved"); 
 			continue;
 		}
+
+		if(!s->get_besch()->get_working_method() != moving_block)
+		{
+			if((s->get_besch()->get_max_distance_to_signalbox() / welt->get_settings().get_meters_per_tile()) < shortest_distance(s->get_pos().get_2d(), sb->get_pos().get_2d()))
+			{
+				failure++;
+				continue;
+			}
+		}
+
 		if(sb->transfer_signal(s, this))
 		{
 			success++;

@@ -102,16 +102,16 @@ wayobj_t::~wayobj_t()
 					const uint slope_height = (hang & 7) ? 1 : 2;
 					if(slope_height == 1)
 					{
-						max_speed = besch->get_topspeed_gradient_1();
+						max_speed = weg->get_besch()->get_topspeed_gradient_1();
 					}
 					else
 					{
-						max_speed = besch->get_topspeed_gradient_2();
+						max_speed = weg->get_besch()->get_topspeed_gradient_2();
 					}
 				}
 				else
 				{
-					max_speed = besch->get_topspeed();
+					max_speed = weg->get_besch()->get_topspeed();
 				}
 				if(weg->hat_gehweg())
 				{
@@ -174,7 +174,7 @@ wayobj_t::~wayobj_t()
 	}
 
 	mark_image_dirty( get_front_image(), 0 );
-	mark_image_dirty( get_bild(), 0 );
+	mark_image_dirty( get_image(), 0 );
 	grund_t *gr = welt->lookup( get_pos() );
 	if( gr ) {
 		for( uint8 i = 0; i < 4; i++ ) {
@@ -185,10 +185,10 @@ wayobj_t::~wayobj_t()
 					wayobj_t *wo2 = next_gr->get_wayobj( besch->get_wtyp() );
 					if( wo2 ) {
 						wo2->mark_image_dirty( wo2->get_front_image(), 0 );
-						wo2->mark_image_dirty( wo2->get_bild(), 0 );
+						wo2->mark_image_dirty( wo2->get_image(), 0 );
 						wo2->set_dir( wo2->get_dir() & ribi_t::get_forward(ribi_t::nsow[i]) );
 						wo2->mark_image_dirty( wo2->get_front_image(), 0 );
-						wo2->mark_image_dirty( wo2->get_bild(), 0 );
+						wo2->mark_image_dirty( wo2->get_image(), 0 );
 						wo2->set_flag(obj_t::dirty);
 					}
 				}
@@ -446,7 +446,7 @@ const char *wayobj_t::extend_wayobj_t(koord3d pos, player_t *owner, ribi_t::ribi
 				// extend this one instead
 				existing_wayobj->set_dir(dir|existing_wayobj->get_dir());
 				existing_wayobj->mark_image_dirty( existing_wayobj->get_front_image(), 0 );
-				existing_wayobj->mark_image_dirty( existing_wayobj->get_bild(), 0 );
+				existing_wayobj->mark_image_dirty( existing_wayobj->get_image(), 0 );
 				existing_wayobj->set_flag(obj_t::dirty);
 				return NULL;
 			}

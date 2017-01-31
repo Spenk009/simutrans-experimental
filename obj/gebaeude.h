@@ -213,8 +213,8 @@ public:
 	 */
 	waytype_t get_waytype() const;
 
-	image_id get_bild() const;
-	image_id get_bild(int nr) const;
+	image_id get_image() const;
+	image_id get_image(int nr) const;
 	image_id get_front_image() const;
 	void mark_images_dirty() const;
 
@@ -281,7 +281,7 @@ public:
 	/**
 	 * @returns pointer to first tile of a multi-tile building.
 	 */
-	gebaeude_t* get_first_tile();
+	gebaeude_t* get_first_tile() const;
 
 	void add_passengers_generated_commuting(uint16 number) { passengers_generated_commuting += number; }
 	void add_passengers_succeeded_commuting(uint16 number) { passengers_succeeded_commuting += number; }

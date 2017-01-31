@@ -35,7 +35,6 @@ obj_besch_t * roadsign_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 	ALLOCA(char, besch_buf, node.size);
 
 	roadsign_besch_t *besch = new roadsign_besch_t();
-	besch->node_info = new obj_besch_t*[node.children];
 
 	// Hajo: Read data
 	fread(besch_buf, node.size, 1, fp);
@@ -93,6 +92,8 @@ obj_besch_t * roadsign_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 				besch->max_speed = kmh_to_speed(decode_uint32(p));
 				besch->base_way_only_cost = decode_uint32(p);
 				besch->upgrade_group = decode_uint8(p); 
+				besch->intermediate_block = decode_uint8(p);
+				besch->normal_danger = decode_uint8(p);
 			}
 			else
 			{
@@ -107,6 +108,8 @@ obj_besch_t * roadsign_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 				besch->max_speed = kmh_to_speed(160); 
 				besch->base_way_only_cost = besch->base_cost;
 				besch->upgrade_group = 0;
+				besch->intermediate_block = false;
+				besch->normal_danger = false;
 			}
 		}
 	}
@@ -175,6 +178,8 @@ obj_besch_t * roadsign_reader_t::read_node(FILE *fp, obj_node_info_t &node)
 		besch->max_speed = kmh_to_speed(160); 
 		besch->base_way_only_cost = besch->base_cost;
 		besch->upgrade_group = 0;
+		besch->intermediate_block = false;
+		besch->normal_danger = false;
 	}
 
 	DBG_DEBUG("roadsign_reader_t::read_node()","min_speed=%i, cost=%i, flags=%x, waytype=%i, intro=%i%i, retire=%i,%i",

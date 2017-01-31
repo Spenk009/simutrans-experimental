@@ -383,7 +383,7 @@ void baum_t::calc_image()
 }
 
 
-image_id baum_t::get_bild() const
+image_id baum_t::get_image() const
 {
 	if(  env_t::hide_trees  ) {
 		if(  env_t::hide_with_transparency  ) {
@@ -535,11 +535,17 @@ bool baum_t::check_season(const bool)
 
 	// tree will die after 704 month (i.e. 58 years 8 month)
 	if(  age >= 704  ) {
-		mark_image_dirty( get_bild(), 0 );
+		mark_image_dirty( get_image(), 0 );
 		return false;
 	}
 
-	calc_image();
+	// update seasonal image
+	const uint8 old_season = season;
+ 	calc_image();
+	if(  season != old_season  ) {
+		mark_image_dirty( get_image(), 0 );
+	}
+
 	return true;
 }
 
@@ -629,7 +635,7 @@ void baum_t::info(cbuffer_t & buf, bool dummy) const
 void baum_t::cleanup(player_t *player)
 {
 	player_t::book_construction_costs(player, welt->get_settings().cst_remove_tree, get_pos().get_2d(), ignore_wt);
-	mark_image_dirty( get_bild(), 0 );
+	mark_image_dirty( get_image(), 0 );
 }
 
 

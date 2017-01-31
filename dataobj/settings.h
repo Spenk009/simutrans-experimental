@@ -479,6 +479,7 @@ public:
 
 	//@author: jamespetts
 	uint16 global_power_factor_percent; 
+	uint16 global_force_factor_percent;
 	
 	// Whether and how weight limits are enforced
 	// @author: jamespetts
@@ -658,6 +659,17 @@ public:
 	uint32 way_wear_power_factor_rail_type;
 	uint16 standard_axle_load;
 	uint32 citycar_way_wear_factor;
+	
+	uint32 sighting_distance_meters;
+	uint16 sighting_distance_tiles;
+
+	uint32 assumed_curve_radius_45_degrees;
+
+	sint32 max_speed_drive_by_sight_kmh;
+	sint32 max_speed_drive_by_sight;
+
+	uint32 time_interval_seconds_to_clear;
+	uint32 time_interval_seconds_to_caution;
 
 	/**
 	 * If map is read from a heightfield, this is the name of the heightfield.
@@ -901,6 +913,8 @@ public:
 
 	uint16 get_global_power_factor_percent() const { return global_power_factor_percent; }
 	void set_global_power_factor_percent(uint16 value) { global_power_factor_percent = value; }
+	uint16 get_global_force_factor_percent() const { return global_force_factor_percent; }
+	void set_global_force_factor_percent(uint16 value) { global_force_factor_percent = value; }
 
 	uint8 get_enforce_weight_limits() const { return enforce_weight_limits; }
 	void set_enforce_weight_limits(uint8 value) { enforce_weight_limits = value; }
@@ -1109,7 +1123,16 @@ public:
 	uint16 get_standard_axle_load() const { return standard_axle_load; }
 	uint32 get_citycar_way_wear_factor() const { return citycar_way_wear_factor; }
 
-	
+	uint32 get_sighting_distance_meters() const { return sighting_distance_meters; }
+	uint16 get_sighting_distance_tiles() const { return sighting_distance_tiles; }
+
+	uint32 get_assumed_curve_radius_45_degrees() const { return assumed_curve_radius_45_degrees; }
+
+	sint32 get_max_speed_drive_by_sight_kmh() const { return max_speed_drive_by_sight_kmh; }
+	sint32 get_max_speed_drive_by_sight() const { return max_speed_drive_by_sight; }
+
+	uint32 get_time_interval_seconds_to_clear() const { return time_interval_seconds_to_clear; }
+	uint32 get_time_interval_seconds_to_caution() const { return time_interval_seconds_to_caution; }
 };
 
 #endif 

@@ -80,6 +80,15 @@ private:
 	// Whether this is a permissive signal.
 	bool permissive;
 
+	// Whether this signal is an intermediate block type signal
+	// in the absolute block working method.
+	bool intermediate_block;
+
+	// If this is true, even signals that would usually be normal
+	// clear (track circuit block and cab signalling: not time interval)
+	// will be normal danger. 
+	bool normal_danger;
+
 	// The maximum speed at which this signal may be approached.
 	// Used for system speeds. 
 	uint32 max_speed;
@@ -99,7 +108,7 @@ public:
 
 	int get_bild_nr(ribi_t::dir dir) const
 	{
-		bild_besch_t const* const image = get_child<bildliste_besch_t>(2)->get_bild(dir);
+		bild_besch_t const* const image = get_child<bildliste_besch_t>(2)->get_image(dir);
 		return image != NULL ? image->get_nummer() : IMG_LEER;
 	}
 
@@ -154,6 +163,10 @@ public:
 
 	bool get_permissive() const { return permissive; }
 
+	bool get_intermediate_block() const { return intermediate_block; }
+
+	bool get_normal_danger() const { return normal_danger; }
+
 	uint32 get_max_speed() const { return max_speed; }
 
 	working_method_t get_working_method() const { return working_method; }
@@ -171,6 +184,8 @@ public:
 		chk->input(has_call_on);
 		chk->input(has_selective_choose);
 		chk->input(permissive);
+		chk->input(intermediate_block);
+		chk->input(normal_danger);
 		chk->input(max_speed);
 		chk->input(working_method); 
 	}

@@ -23,7 +23,7 @@
 
 #include "../tpl/slist_tpl.h"
 
-linieneintrag_t schedule_t::dummy_eintrag(koord3d::invalid, 0, 0, 0, true, false);
+linieneintrag_t schedule_t::dummy_eintrag(koord3d::invalid, 0, 0, 0, -1, false);
 
 schedule_t::schedule_t(loadsave_t* const file)
 {
@@ -134,6 +134,12 @@ bool schedule_t::insert(const grund_t* gr, uint16 ladegrad, uint8 waiting_time_s
 		return false;
 	}
 
+	if(wait_for_time)
+	{
+		// "ladegrad" (wait for load) and wait_for_time are not compatible.
+		ladegrad = 0;
+	}
+
 	if(!gr)
 	{
 		// This can occur in some cases if a depot is not found.
@@ -141,7 +147,7 @@ bool schedule_t::insert(const grund_t* gr, uint16 ladegrad, uint8 waiting_time_s
 	}
 
 	if(  ist_halt_erlaubt(gr)  ) {
-		eintrag.insert_at(aktuell, linieneintrag_t(gr->get_pos(), ladegrad, waiting_time_shift, spacing_shift, !gr->get_halt().is_bound(), wait_for_time));
+		eintrag.insert_at(aktuell, linieneintrag_t(gr->get_pos(), ladegrad, waiting_time_shift, spacing_shift, -1, wait_for_time));
 		aktuell ++;
 		return true;
 	}
@@ -171,8 +177,14 @@ bool schedule_t::append(const grund_t* gr, uint16 ladegrad, uint8 waiting_time_s
 		return false;
 	}
 
+	if(wait_for_time)
+	{
+		// "ladegrad" (wait for load) and wait_for_time are not compatible.
+		ladegrad = 0;
+	}
+
 	if(ist_halt_erlaubt(gr)) {
-		eintrag.append(linieneintrag_t(gr->get_pos(), ladegrad, waiting_time_shift, spacing_shift, !gr->get_halt().is_bound(), wait_for_time), 4);
+		eintrag.append(linieneintrag_t(gr->get_pos(), ladegrad, waiting_time_shift, spacing_shift, -1, wait_for_time), 4);
 		return true;
 	}
 	else {
@@ -188,6 +200,13 @@ bool schedule_t::append(const grund_t* gr, uint16 ladegrad, uint8 waiting_time_s
 // cleanup a schedule
 void schedule_t::cleanup()
 {
+
+	if(eintrag.get_count() == 1)
+	{
+		// Schedules of just one entry are not allowed.
+		eintrag.clear();
+	}
+	
 	if(  eintrag.empty()  ) {
 		return; // nothing to check
 	}
@@ -210,6 +229,12 @@ void schedule_t::cleanup()
 		else {
 			// next pos for check
 			lastpos = eintrag[i].pos;
+		}
+
+		if(eintrag[i].wait_for_time)
+		{
+			// "ladegrad" (wait for load) and wait_for_time are not compatible.
+			eintrag[i].ladegrad = 0;
 		}
 	}
 	make_aktuell_valid();
@@ -274,7 +299,7 @@ void schedule_t::rdwr(loadsave_t *file)
 				eintrag.append( linieneintrag_t() );
 				eintrag[i].waiting_time_shift = 0;
 				eintrag[i].spacing_shift = 0;
-				eintrag[i].reverse = false;
+				eintrag[i].reverse = -1;
 			}
 			eintrag[i].pos.rdwr(file);
 			if(file->get_experimental_version() >= 10 && file->get_version() >= 111002)
@@ -293,6 +318,7 @@ void schedule_t::rdwr(loadsave_t *file)
 				uint8 old_ladegrad = (uint8)eintrag[i].ladegrad;
 				file->rdwr_byte(old_ladegrad);
 				eintrag[i].ladegrad = (uint16)old_ladegrad;
+
 			}
 			if(file->get_version()>=99018) {
 				file->rdwr_byte(eintrag[i].waiting_time_shift);
@@ -304,11 +330,16 @@ void schedule_t::rdwr(loadsave_t *file)
 
 				if(file->get_experimental_version() >= 10)
 				{
-					file->rdwr_bool(eintrag[i].reverse);
+					file->rdwr_byte(eintrag[i].reverse);
+					if(file->get_experimental_revision() < 4 && eintrag[i].reverse)
+					{
+						// Older versions had true as a default: set to indeterminate. 
+						eintrag[i].reverse = -1;
+					}
 				}
 				else
 				{
-					eintrag[i].reverse = false;
+					eintrag[i].reverse = -1;
 				}
 #ifdef SPECIAL_RESCUE_12 // For testers who want to load games saved with earlier unreleased versions.
 				if(file->get_experimental_version() >= 12 && file->is_saving())
@@ -322,6 +353,12 @@ void schedule_t::rdwr(loadsave_t *file)
 				{
 					eintrag[i].wait_for_time = eintrag[i].ladegrad > 100 && spacing;
 				}
+			}
+			if(eintrag[i].wait_for_time)
+			{
+				// "ladegrad" (wait for load) and wait_for_time are not compatible.
+				// Resolve this in games saved before this fix was implemented
+				eintrag[i].ladegrad = 0;
 			}
 		}
 	}
@@ -344,6 +381,8 @@ void schedule_t::rdwr(loadsave_t *file)
 	{
 		file->rdwr_bool(same_spacing_shift);
 	}
+
+
 }
 
 
@@ -620,7 +659,7 @@ bool schedule_t::sscanf_schedule( const char *ptr )
 			p++;
 		}
 		// ok, now we have a complete entry
-		eintrag.append(linieneintrag_t(koord3d(values[0], values[1], values[2]), values[3], values[4], values[5], (bool)values[6], (bool)values[7]));
+		eintrag.append(linieneintrag_t(koord3d(values[0], values[1], values[2]), values[3], values[4], values[5], values[6], (bool)values[7]));
 	}
 	return true;
 }

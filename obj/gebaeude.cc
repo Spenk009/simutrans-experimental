@@ -14,7 +14,6 @@ static pthread_mutex_t sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t add_to_city_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-
 #include "../bauer/hausbauer.h"
 #include "../gui/money_frame.h"
 #include "../simworld.h"
@@ -30,6 +29,7 @@ static pthread_mutex_t add_to_city_mutex = PTHREAD_MUTEX_INITIALIZER;
 #include "../simdebug.h"
 #include "../simintr.h"
 #include "../simskin.h"
+#include "../simsignalbox.h"
 
 #include "../boden/grund.h"
 #include "../boden/wege/strasse.h"
@@ -533,7 +533,7 @@ bool gebaeude_t::sync_step(long delta_t)
 		// still under construction?
 		if(welt->get_zeit_ms() - purchase_time > 5000ll) {
 			set_flag(obj_t::dirty);
-			mark_image_dirty(get_bild(), 0);
+			mark_image_dirty(get_image(), 0);
 			zeige_baugrube = false;
 			if(tile->get_phasen()<=1) {
 				welt->sync_eyecandy_remove( this );
@@ -604,7 +604,7 @@ void gebaeude_t::calc_image()
 }
 
 
-image_id gebaeude_t::get_bild() const
+image_id gebaeude_t::get_image() const
 {
 	if(env_t::hide_buildings!=0  &&  tile->has_image()) {
 		// opaque houses
@@ -664,7 +664,7 @@ PLAYER_COLOR_VAL gebaeude_t::get_outline_colour() const
 }
 
 
-image_id gebaeude_t::get_bild(int nr) const
+image_id gebaeude_t::get_image(int nr) const
 {
 	if(zeige_baugrube || env_t::hide_buildings) {
 		return IMG_LEER;
@@ -799,7 +799,7 @@ bool gebaeude_t::is_same_building(gebaeude_t* other)
 }
 
 
-gebaeude_t* gebaeude_t::get_first_tile()
+gebaeude_t* gebaeude_t::get_first_tile() const
 {
 	if(tile)
 	{
@@ -812,16 +812,28 @@ gebaeude_t* gebaeude_t::get_first_tile()
 				if (tile==NULL  ||  !tile->has_image()) {
 					continue;
 				}
-				if (grund_t *gr = welt->lookup( get_pos() - get_tile()->get_offset() + k)) {
-					gebaeude_t *gb = gr->find<gebaeude_t>();
-					if (gb  &&  gb->get_tile() == tile) {
+				if(grund_t *gr = welt->lookup( get_pos() - get_tile()->get_offset() + k))
+				{
+					gebaeude_t* gb;
+					if(tile->get_besch()->get_utyp() == haus_besch_t::signalbox)
+					{
+						gb = gr->get_signalbox();
+					}
+					else
+					{
+						gb = gr->find<gebaeude_t>();
+					}
+					if(gb && gb->get_tile() == tile)
+					{
 						return gb;
 					}
 				}
 			}
 		}
 	}
-	return this;
+	// FIXME: Find a way of doing this without having to cast away const,
+	// as this is naughty.
+	return (gebaeude_t*)this;
 }
 
 void gebaeude_t::get_description(cbuffer_t & buf) const
@@ -919,6 +931,12 @@ void gebaeude_t::info(cbuffer_t & buf, bool dummy) const
 		if(get_stadt() != NULL)
 		{
 			buf.printf(translator::translate("Town: %s\n"), ptr.stadt->get_name());
+		}
+
+		if(tile->get_besch()->get_utyp() == haus_besch_t::signalbox)
+		{
+			signalbox_t* sb = (signalbox_t*)get_first_tile();
+			buf.printf("%s: %d/%d\n", translator::translate("Signals"), sb->get_number_of_signals_controlled_from_this_box(), tile->get_besch()->get_capacity()); 
 		}
 
 		buf.printf("\n%s: %d\n", translator::translate("citicens"), get_adjusted_population());
@@ -1525,7 +1543,7 @@ void gebaeude_t::mark_images_dirty() const
 	else {
 		img = tile->get_hintergrund( anim_frame, 0, season ) ;
 	}
-	for(  int i=0;  img!=IMG_LEER;  img=get_bild(++i)  ) {
+	for(  int i=0;  img!=IMG_LEER;  img=get_image(++i)  ) {
 		mark_image_dirty( img, -(i*get_tile_raster_width()) );
 	}
 }

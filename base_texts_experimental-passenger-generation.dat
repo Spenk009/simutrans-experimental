@@ -235,3 +235,61 @@ note=Shown when not all signals transfer successfully from one signalbox to anot
 obj=program_text
 name=Cannot build signalbox underwater.
 note=Error message shown when attempting to build an underground signalbox underwater
+-
+obj=program_text
+name=Emergency stop
+note=Convoy tooltip when a train in time interval mode runs into another train
+-
+obj=program_text
+name=Signals
+note=Text in the information window of signalboxes showing the number of signals controlled from the box
+-
+obj=program_text
+name=building
+note=Part of the "A new building is now available: [name of building]" message appearing at the beginning of the month
+-
+obj=program_text
+name=drive_by_sight
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=time_interval
+note=
+-
+obj=program_text
+name=absolute_block
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=token_block
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=track_circuit_block
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=cab_signalling
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=moving_block
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=one_train_staff
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=time_interval_with_telegraph
+note=The name of the working method for signalling purposes
+-
+obj=program_text
+name=Current working method
+note=Text in the convoy detail window showing the current working method
+-
+obj=program_text
+name=Time since a train last passed
+note=Text in the signal information window showing the time since a train last passed. Particularly useful for time interval signals, but shown on all signals for information.
+
+

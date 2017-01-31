@@ -400,7 +400,7 @@ bool ai_goods_t::create_ship_transport_vehikel(fabrik_t *qfab, int anz_vehikel)
 			koord p(x,y);
 			grund_t *gr = welt->lookup_kartenboden(p);
 			if(  gr->ist_wasser()  &&  halt == haltestelle_t::get_halt( gr->get_pos(), this )  &&  gr->get_depot()==NULL  ) {
-				if(  shortest_distance(best_pos,platz2)<shortest_distance(p,platz2)  ) {
+				if(  koord_distance(best_pos,platz2)<koord_distance(p,platz2)  ) {
 					best_pos = p;
 				}
 			}
@@ -949,7 +949,7 @@ DBG_MESSAGE("do_ki()","check railway");
 			if(  road_vehicle!=NULL  ) {
 				best_road_speed = road_vehicle->get_geschw();
 				// find cheapest road
-				road_weg = wegbauer_t::weg_search( road_wt, best_road_speed, road_vehicle->get_gewicht(), welt->get_timeline_year_month(),weg_t::type_flat );
+				road_weg = wegbauer_t::weg_search(road_wt, best_road_speed, road_vehicle->get_gewicht(), welt->get_timeline_year_month(), weg_t::type_flat, 1);
 				if(  road_weg!=NULL  ) {
 					if(  best_road_speed>road_weg->get_topspeed()  ) {
 						best_road_speed = road_weg->get_topspeed();

@@ -35,6 +35,8 @@ public:
 	// version for which the savegames should be created
 	static const char *savegame_ex_version_str;
 
+	static const char *savegame_ex_revision_str;
+
 	/// name of the directory to the pak-set
 	static std::string objfilename;
 
@@ -206,6 +208,10 @@ public:
 	static uint8 front_window_text_color;
 	static uint8 bottom_window_bar_color;
 	static uint8 bottom_window_text_color;
+
+	// display compass
+	static uint16 compass_map_position;
+	static uint16 compass_screen_position;
 
 	/// @} end of GUI settings
 

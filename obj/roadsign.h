@@ -125,7 +125,7 @@ public:
 	void set_ticks_offset(uint8 offset) { ticks_offset = offset; }
 
 	inline void set_bild( image_id b ) { image = b; }
-	image_id get_bild() const { return image; }
+	image_id get_image() const { return image; }
 
 	/**
 	* For the front image hiding vehicles
@@ -173,7 +173,7 @@ public:
 
 	static const roadsign_besch_t *roadsign_search(roadsign_besch_t::types flag, const waytype_t wt, const uint16 time);
 
-	const roadsign_besch_t* find_best_upgrade(); 
+	const roadsign_besch_t* find_best_upgrade(bool underground); 
 
 	static const roadsign_besch_t *find_besch(const char *name) { return table.get(name); }
 
@@ -182,7 +182,34 @@ public:
 	// Upgrades this sign or signal to another type.
 	// Returns true if succeeds.
 	bool upgrade(const roadsign_besch_t* new_besch); 
-	bool upgrade() { return upgrade(find_best_upgrade()); } 
+	bool upgrade(bool underground) { return upgrade(find_best_upgrade(underground)); } 
+
+	static const char* get_working_method_name(working_method_t wm)
+	{
+		switch(wm)
+		{
+		case drive_by_sight:
+			return "drive_by_sight";
+		case time_interval:
+			return "time_interval";
+		case absolute_block:
+			return "absolute_block";
+		case token_block:
+			return "token_block";
+		case track_circuit_block:
+			return "track_circuit_block";
+		case cab_signalling:
+			return "cab_signalling";
+		case moving_block:
+			return "moving_block";
+		case one_train_staff:
+			return "one_train_staff";
+		case time_interval_with_telegraph:
+			return "time_interval_with_telegraph";
+		default:
+			return "unknown";
+		};
+	}
 };
 
 #endif

@@ -252,7 +252,7 @@ void translator::load_custom_list( int lang, vector_tpl<char *>&name_list, const
 		while(  !feof(file)  ) {
 			if (fgets_line(buf, sizeof(buf), file)) {
 				rtrim(buf);
-				char *c = recode(buf, file_is_utf, langs[lang].utf_encoded, langs[lang].is_latin2_based );
+				char *c = recode(buf, file_is_utf, true, langs[lang].is_latin2_based );
 				if(  *c!=0  &&  *c!='#'  ) {
 					name_list.append(c);
 				}
@@ -285,9 +285,9 @@ void translator::init_custom_names(int lang)
 	if (city_name_list.empty()) {
 		DBG_MESSAGE("translator::init_city_names", "reading failed, creating random names.");
 		// Hajo: try to read list failed, create random names
-		for(  uint i = 0;  i < 36;  i++  ) {
+		for(  uint i = 0;  i < 1024;  i++  ) {
 			char name[32];
-			sprintf( name, "%%%c_CITY_SYLL", i+(i<10 ? '0' : 'A'-10 ) );
+			sprintf( name, "%%%X_CITY_SYLL", i );
 			const char *s1 = translator::translate(name,lang);
 			if(s1==name) {
 				// name not available ...
@@ -295,9 +295,9 @@ void translator::init_custom_names(int lang)
 			}
 			// now add all second name extensions ...
 			const size_t l1 = strlen(s1);
-			for(  uint j = 0;  j < 36;  j++  ) {
+			for(  uint j = 0;  j < 1024;  j++  ) {
 
-				sprintf( name, "&%c_CITY_SYLL", j+(j<10 ? '0' : 'A'-10 ) );
+				sprintf( name, "&%X_CITY_SYLL", j );
 				const char *s2 = translator::translate(name,lang);
 				if(s2==name) {
 					// name not available ...
@@ -354,15 +354,6 @@ void translator::load_language_file(FILE* file)
 
 	langs[single_instance.lang_count].name = strdup(buffer1);
 
-#if 0
-	// if the language file is utf, all language strings are assumed to be unicode
-	// @author prissi
-	langs[single_instance.lang_count].utf_encoded = file_is_utf;
-#else
-	// all internal languages are now utf8
-	langs[single_instance.lang_count].utf_encoded = true;
-#endif
-
 	if(  !file_is_utf  ) {
 		// find out the font if not unicode (and skip it)
 		while(  !feof(file)  ) {
@@ -387,8 +378,8 @@ void translator::load_language_file(FILE* file)
 
 	//load up translations, putting them into
 	//language table of index 'lang'
-	load_language_file_body(file, &langs[single_instance.lang_count].texts, langs[single_instance.lang_count].utf_encoded, file_is_utf, langs[single_instance.lang_count].is_latin2_based );
-}
+	load_language_file_body(file, &langs[single_instance.lang_count].texts, true, file_is_utf, langs[single_instance.lang_count].is_latin2_based );
+ }
 
 
 static translator::lang_info* get_lang_by_iso(const char *iso)
@@ -418,7 +409,7 @@ void translator::load_files_from_folder(const char *folder_name, const char *wha
 			DBG_MESSAGE("translator::load_files_from_folder()", "loading %s translations from %s for language %s", what, fileName.c_str(), lang->iso_base);
 			if (FILE* const file = fopen(fileName.c_str(), "rb")) {
 				bool file_is_utf = is_unicode_file(file);
-				load_language_file_body(file, &lang->texts, lang->utf_encoded, file_is_utf, lang->is_latin2_based );
+				load_language_file_body(file, &lang->texts, true, file_is_utf, lang->is_latin2_based );
 				fclose(file);
 			}
 			else {
@@ -543,10 +534,9 @@ void translator::set_language(int lang)
 		current_langinfo = langs+lang;
 		env_t::language_iso = langs[lang].iso;
 		env_t::default_settings.set_name_language_iso( langs[lang].iso );
-		display_set_unicode(langs[lang].utf_encoded);
 		init_custom_names(lang);
 		current_langinfo->eclipse_width = proportional_string_width( translate("...") );
-		DBG_MESSAGE("translator::set_language()", "%s, unicode %d", langs[lang].name, langs[lang].utf_encoded);
+		DBG_MESSAGE("translator::set_language()", "%s, unicode %d", langs[lang].name, true);
 	}
 	else {
 		dbg->warning("translator::set_language()", "Out of bounds : %d", lang);

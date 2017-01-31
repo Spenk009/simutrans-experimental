@@ -524,7 +524,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib;Imm32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-debug.exe</OutputFile>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -593,7 +593,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-debug.exe</OutputFile>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -658,7 +658,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-debug.exe</OutputFile>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -725,7 +725,7 @@
       </StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-debug.exe</OutputFile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -793,7 +793,7 @@
       <AdditionalOptions>/F 4194304 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-debug.exe</OutputFile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -863,7 +863,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -937,7 +937,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -1010,7 +1010,7 @@
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>F:\My Documents\Development\Bzlib;F:\My Documents\Development\Zlib\include;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -1081,7 +1081,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -1152,7 +1152,7 @@
       <AdditionalOptions>/IMAGE_FILE_LARGE_ADDRESS_AWARE %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Strmiids.lib;Ws2_32.lib;shell32.lib;pthreadVCE2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\OpenTTD\win32\library;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -1218,7 +1218,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>SDL.lib SDLmain.lib %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Ws2_32.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Ws2_32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-SDL.exe</OutputFile>
       <AdditionalLibraryDirectories>F:\My Documents\Development\Bzlib; F:\My Documents\Development\Simutrans\SDL-1.2.13\include;c:\Program Files\PlatformSDK\Lib;F:\My Documents\Development\Zlib\include;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -1283,7 +1283,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>SDL.lib SDLmain.lib %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Ws2_32.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winmm.lib;zlibstat.lib;advapi32.lib;wsock32.lib;libbz2.lib;Imm32.lib;Ws2_32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)-debug-SDL.exe</OutputFile>
       <AdditionalLibraryDirectories>F:\My Documents\Development\Bzlib;F:\My Documents\Development\Simutrans\SDL-1.2.13\include;G:\Program Files\PlatformSDK\Lib;F:\My Documents\Development\Zlib\include;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -1682,7 +1682,7 @@
     <ClCompile Include="gui\sound_frame.cc" />
     <ClCompile Include="besch\reader\sound_reader.cc" />
     <ClCompile Include="gui\sprachen.cc" />
-    <ClCompile Include="gui\stadt_info.cc" />
+    <ClCompile Include="gui\city_info.cc" />
     <ClCompile Include="gui\station_building_select.cc" />
     <ClCompile Include="boden\wege\strasse.cc" />
     <ClCompile Include="dataobj\tabfile.cc" />
@@ -1718,6 +1718,7 @@
     <ClInclude Include="dataobj\objlist.h" />
     <ClInclude Include="dataobj\records.h" />
     <ClInclude Include="dataobj\settings.h" />
+    <ClInclude Include="display\clip_num.h" />
     <ClInclude Include="display\font.h" />
     <ClInclude Include="display\scr_coord.h" />
     <ClInclude Include="display\simgraph.h" />
@@ -2070,7 +2071,7 @@
     <ClInclude Include="tpl\sparse_tpl.h" />
     <ClInclude Include="besch\spezial_obj_tpl.h" />
     <ClInclude Include="gui\sprachen.h" />
-    <ClInclude Include="gui\stadt_info.h" />
+    <ClInclude Include="gui\city_info.h" />
     <ClInclude Include="besch\stadtauto_besch.h" />
     <ClInclude Include="gui\station_building_select.h" />
     <ClInclude Include="boden\wege\strasse.h" />
@@ -2118,6 +2119,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\Simutrans\simu-server.log" />
+    <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="base-texts-depot-window-refurbish.dat" />
     <None Include="base_textes_experimental_10.17.dat" />
@@ -2157,19 +2159,94 @@
     <None Include="base_texts_experimental_transshipment.dat" />
     <None Include="base_texts_phil_fix.dat" />
     <None Include="base_texts_walking_passengers.dat" />
-    <None Include="config.default" />
     <None Include="config.template" />
     <None Include="Makefile" />
     <None Include="makeobj\Makefile" />
     <None Include="simutrans\config\electricity.tab" />
     <None Include="simutrans\config\privatecar.tab" />
     <None Include="simutrans\config\simuconf.tab" />
-    <None Include="simutrans\copyright.txt" />
     <None Include="simutrans\text\en.tab" />
     <None Include="simutrans\themes\themes.tab" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="simres.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="simutrans\text\en\airtools.txt" />
+    <Text Include="simutrans\text\en\baum_build.txt" />
+    <Text Include="simutrans\text\en\catering.txt" />
+    <Text Include="simutrans\text\en\citybuilding_build.txt" />
+    <Text Include="simutrans\text\en\citylist_filter.txt" />
+    <Text Include="simutrans\text\en\citywindow.txt" />
+    <Text Include="simutrans\text\en\climates.txt" />
+    <Text Include="simutrans\text\en\CodeParameters.txt" />
+    <Text Include="simutrans\text\en\color.txt" />
+    <Text Include="simutrans\text\en\comfort.txt" />
+    <Text Include="simutrans\text\en\convoi.txt" />
+    <Text Include="simutrans\text\en\convoidetail.txt" />
+    <Text Include="simutrans\text\en\convoiinfo.txt" />
+    <Text Include="simutrans\text\en\convoi_filter.txt" />
+    <Text Include="simutrans\text\en\curiositylist_filter.txt" />
+    <Text Include="simutrans\text\en\curiosity_build.txt" />
+    <Text Include="simutrans\text\en\depot.txt" />
+    <Text Include="simutrans\text\en\display.txt" />
+    <Text Include="simutrans\text\en\edittools.txt" />
+    <Text Include="simutrans\text\en\electricity.txt" />
+    <Text Include="simutrans\text\en\enlarge_map.txt" />
+    <Text Include="simutrans\text\en\factorylist_filter.txt" />
+    <Text Include="simutrans\text\en\factory_build.txt" />
+    <Text Include="simutrans\text\en\finances.txt" />
+    <Text Include="simutrans\text\en\general.txt" />
+    <Text Include="simutrans\text\en\goods_filter.txt" />
+    <Text Include="simutrans\text\en\haltlist.txt" />
+    <Text Include="simutrans\text\en\haltlist_filter.txt" />
+    <Text Include="simutrans\text\en\industry_info.txt" />
+    <Text Include="simutrans\text\en\insolvency.txt" />
+    <Text Include="simutrans\text\en\inspection_tool.txt" />
+    <Text Include="simutrans\text\en\keys.txt" />
+    <Text Include="simutrans\text\en\labellist_filter.txt" />
+    <Text Include="simutrans\text\en\language.txt" />
+    <Text Include="simutrans\text\en\linemanagement.txt" />
+    <Text Include="simutrans\text\en\list.txt" />
+    <Text Include="simutrans\text\en\load.txt" />
+    <Text Include="simutrans\text\en\load_relief.txt" />
+    <Text Include="simutrans\text\en\mailbox.txt" />
+    <Text Include="simutrans\text\en\map.txt" />
+    <Text Include="simutrans\text\en\monorailtools.txt" />
+    <Text Include="simutrans\text\en\mouse.txt" />
+    <Text Include="simutrans\text\en\new_world.txt" />
+    <Text Include="simutrans\text\en\options.txt" />
+    <Text Include="simutrans\text\en\password.txt" />
+    <Text Include="simutrans\text\en\players.txt" />
+    <Text Include="simutrans\text\en\privatecar.txt" />
+    <Text Include="simutrans\text\en\privatesign_info.txt" />
+    <Text Include="simutrans\text\en\railtools.txt" />
+    <Text Include="simutrans\text\en\removal_tool.txt" />
+    <Text Include="simutrans\text\en\replace.txt" />
+    <Text Include="simutrans\text\en\roadtools.txt" />
+    <Text Include="simutrans\text\en\save.txt" />
+    <Text Include="simutrans\text\en\scenario.txt" />
+    <Text Include="simutrans\text\en\schedule.txt" />
+    <Text Include="simutrans\text\en\server.txt" />
+    <Text Include="simutrans\text\en\settings.txt" />
+    <Text Include="simutrans\text\en\shiptools.txt" />
+    <Text Include="simutrans\text\en\signals_BACKUP.txt" />
+    <Text Include="simutrans\text\en\signals_overview.txt" />
+    <Text Include="simutrans\text\en\Signals_placements.txt" />
+    <Text Include="simutrans\text\en\signals_signs.txt" />
+    <Text Include="simutrans\text\en\signals_usage.txt" />
+    <Text Include="simutrans\text\en\signals_working_methods.txt" />
+    <Text Include="simutrans\text\en\signal_spacing.txt" />
+    <Text Include="simutrans\text\en\simutrans.txt" />
+    <Text Include="simutrans\text\en\slopetools.txt" />
+    <Text Include="simutrans\text\en\sound.txt" />
+    <Text Include="simutrans\text\en\special.txt" />
+    <Text Include="simutrans\text\en\station.txt" />
+    <Text Include="simutrans\text\en\station_details.txt" />
+    <Text Include="simutrans\text\en\trafficlight_info.txt" />
+    <Text Include="simutrans\text\en\tramtools.txt" />
+    <Text Include="simutrans\text\en\way_wear.txt" />
+    <Text Include="simutrans\text\en\window.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

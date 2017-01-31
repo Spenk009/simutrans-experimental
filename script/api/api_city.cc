@@ -47,8 +47,7 @@ SQInteger world_get_city_by_index(HSQUIRRELVM vm)
 	return push_instance(vm, "city_x",  pos.x, pos.y);
 }
 
-
-static void_t set_citygrowth(stadt_t *city, bool allow)
+static script_api::void_t set_citygrowth(stadt_t *city, bool allow)
 {
 	static char param[16];
 	sprintf(param,"g%hi,%hi,%hi", city->get_pos().x, city->get_pos().y, (short)allow );
@@ -57,9 +56,8 @@ static void_t set_citygrowth(stadt_t *city, bool allow)
 	tool->flags |=  tool_t::WFL_SCRIPT;
 	welt->set_tool( tool, welt->get_player(1) );
 	tool->flags &= ~tool_t::WFL_SCRIPT;
-	return void_t();
+	return script_api::void_t();
 }
-
 
 void export_city(HSQUIRRELVM vm)
 {

@@ -40,7 +40,11 @@ signal_t::signal_t( loadsave_t *file) :
 
 signal_t::signal_t(player_t *player, koord3d pos, ribi_t::ribi dir,const roadsign_besch_t *besch, koord3d sb, bool preview) : roadsign_t(obj_t::signal, player, pos, dir, besch, preview)
 {
-	if(besch->is_pre_signal())
+	if(besch->get_working_method() == time_interval || besch->get_working_method() == time_interval_with_telegraph)
+	{
+		state = clear;
+	}
+	else if(besch->is_pre_signal())
 	{
 		// Distant signals do not display a danger aspect.
 		state = caution;
@@ -50,6 +54,7 @@ signal_t::signal_t(player_t *player, koord3d pos, ribi_t::ribi dir,const roadsig
 		state = danger;
 	}
 
+	train_last_passed = 0;
 	no_junctions_to_next_signal = false;
 
 	if(besch->get_signal_group())
@@ -80,6 +85,7 @@ signal_t::~signal_t()
 			sigb->remove_signal(this); 
 		}
 	}
+	welt->remove_time_interval_signal_to_check(this); 
 }
 
 
@@ -94,14 +100,23 @@ void signal_t::info(cbuffer_t & buf, bool dummy) const
 {
 	// well, needs to be done
 	obj_t::info(buf);
+	signal_t* sig = (signal_t*)this;
 
 	buf.printf("%s\n%s%u", translator::translate(besch->get_name()), translator::translate("\ndirection:"), get_dir());
+	buf.append("\n\n");
 
+	buf.append(translator::translate(get_working_method_name(besch->get_working_method())));
+	buf.append("\n\n");
+
+	buf.append(translator::translate("Time since a train last passed")); 
+	buf.append(": "); 
+	char time_since_train_last_passed[32];
+	welt->sprintf_ticks(time_since_train_last_passed,sizeof(time_since_train_last_passed), welt->get_zeit_ms() - sig->get_train_last_passed());
+	buf.append(time_since_train_last_passed);
 	buf.append("\n\n");
 
 	buf.append(translator::translate("Controlled from"));
 	buf.append(":\n");
-	signal_t* sig = (signal_t*)this;
 	koord3d sb = sig->get_signalbox();
 	if(sb == koord3d::invalid)
 	{
@@ -379,16 +394,24 @@ void signal_t::rdwr_signal(loadsave_t *file)
 		ignore_choose = ignore_choose_full; 
 #ifdef SPECIAL_RESCUE_12_6
 		if(file->is_saving())
+		{
 #endif
-		// TODO: Enable this
-		//file->rdwr_bool(no_junctions_to_next_signal);
+		file->rdwr_bool(no_junctions_to_next_signal);
+		file->rdwr_longlong(train_last_passed); 
+#ifdef SPECIAL_RESCUE_12_6
+		}
+#endif
+	}
+
+	if(besch && (besch->get_working_method() == time_interval || besch->get_working_method() == time_interval_with_telegraph) && (state == caution || state == caution_no_choose || state == danger))
+	{
+		welt->add_time_interval_signal_to_check(this); 
 	}
 }
 
 void signal_t::rotate90()
 {
 	signalbox.rotate90(welt->get_size().y-1); 
-	roadsign_t* rs = (roadsign_t*) this;
-	dir = ribi_t::rotate90( dir );
+	dir = ribi_t::rotate90(dir);
 	obj_t::rotate90();
 }

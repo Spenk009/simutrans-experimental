@@ -20,6 +20,7 @@
 *.gz*
 *.ilk
 *.bz2
+*.obj
 ipch
 /Debug
 /Debug (SDL)
@@ -49,7 +50,6 @@ _UpgradeReport_Files*
 *.rej
 /simutrans/*pak*
 /simutrans/pak*
-/simutrans/text
 *.bdf
 /ipch/*
 *.*sdf
@@ -59,8 +59,93 @@ _UpgradeReport_Files*
 /doxygen
 /libs
 *.lnk
-*.pak
+#*.pak
 /Default
 /x64
 /zlib*
 *server*-network.sve
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# =========================
+# Operating System Files
+# =========================
+
+# OSX
+# =========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Language files to be added eventually:
+text/cz
+text/de
+text/dk
+#text/en
+text/es
+text/fr
+text/hr
+text/hu
+text/it
+text/ja
+text/nl
+text/pl
+text/pt
+text/ro
+text/ru
+text/sk
+text/sv
+text/zh
+
+
+# Folders:
+music/
+script/
+pak*/
+text/citylists/
+
+
+# Files:
+/*.*
+simctrl
+envvars
+text/*.*
+text/en/Simutrans-Experimental.vcxproj.lnk
+text/all-help-file-names
+
+/Simutrans-Ex/nbproject/private/

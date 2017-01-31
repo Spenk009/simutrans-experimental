@@ -14,7 +14,7 @@ using std::string;
 
 void roadsign_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& obj)
 {
-	obj_node_t node(this, 42, &parent);
+	obj_node_t node(this, 44, &parent);
 
 	uint32                  const cost      = obj.get_int("cost",      500) * 100;
 	uint16                  const min_speed = obj.get_int("min_speed",   0);
@@ -60,6 +60,11 @@ void roadsign_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 		working_method = time_interval;
 	}
 
+	if(!STRICMP(working_method_string, "time_interval_with_telegraph"))
+	{
+		working_method = time_interval_with_telegraph;
+	}
+
 	if(!STRICMP(working_method_string, "absolute_block"))
 	{
 		working_method = absolute_block;
@@ -86,7 +91,9 @@ void roadsign_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	}
 
 	uint32 signal_upgrade_cost = obj.get_int("signal_upgrade_cost", cost); 
-	uint8 upgrade_group = obj.get_int("upgrade_group", 0); 
+	uint8 upgrade_group = obj.get_int("upgrade_group", 0);
+	uint8 intermediate_block = obj.get_int("intermediate_block", 0);
+	uint8 normal_danger = obj.get_int("normal_danger", 0);
 
 	uint16 version = 0x8004; // version 4
 	
@@ -129,14 +136,16 @@ void roadsign_writer_t::write_obj(FILE* fp, obj_node_t& parent, tabfileobj_t& ob
 	node.write_uint32(fp, max_speed_kmh, 33);
 	node.write_uint32(fp, signal_upgrade_cost, 37);
 	node.write_uint8(fp, upgrade_group, 41); 
-
+	node.write_uint8(fp, intermediate_block, 42);
+	node.write_uint8(fp, normal_danger, 43); 
+	
 	write_head(fp, node, obj);
 
 	// add the images
 	slist_tpl<string> keys;
 	string str;
 
-	for (int i = 0; i < 24; i++) {
+	for (int i = 0; i < 48; i++) {
 		char buf[40];
 
 		sprintf(buf, "image[%i]", i);

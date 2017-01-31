@@ -18,7 +18,6 @@ class signalbox_t : public gebaeude_t
 private:
 
 	slist_tpl<koord3d> signals; // The signals controlled by this signalbox.
-	signal_t* get_signal_from_location(koord3d k);
 
 protected:
 
@@ -60,6 +59,8 @@ public:
 	// (Intended to be a preparation for closure).
 	// Returns number of signals transferred successfully, number that failed (x,y).
 	koord transfer_all_signals(signalbox_t* sb); 
+
+	uint32 get_number_of_signals_controlled_from_this_box() const { return signals.get_count(); }
 };
 
 #endif

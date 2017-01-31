@@ -1113,10 +1113,10 @@ vector_tpl<lines_loaded_compare_t> lines_loaded; // used to skip loading multipl
 // Add convoy to loading
 void haltestelle_t::request_loading(convoihandle_t cnv)
 {
-	if(  !loading_here.is_contained( cnv )  ) 
+	if(!loading_here.is_contained(cnv))
 	{
 		estimated_convoy_arrival_times.remove(cnv.get_id());
-		loading_here.append( cnv );
+		loading_here.append(cnv);
 	}
 	if(last_loading_step != welt->get_steps())
 	{
@@ -1160,7 +1160,15 @@ void haltestelle_t::step()
 	//   refresh_routing() instead of
 	//   karte_t::set_schedule_counter()
 
+	COLOR_VAL old_status_color = status_color;
+
 	recalc_status();
+
+	if(status_color == COL_RED || old_status_color != status_color)
+	{
+		// The transfer time needs recalculating if the stop is overcrowded.
+		calc_transfer_time();
+	}
 
 	// Every 256 steps - check whether passengers/goods have been waiting too long.
 	// Will overflow at 255.
@@ -1617,9 +1625,19 @@ uint16 haltestelle_t::get_average_waiting_time(halthandle_t halt, uint8 category
 			total_times /= count;
 			return total_times;
 		}
-		return get_service_frequency(halt, category);
 	}
-	return get_service_frequency(halt, category);
+	// The service frequency is divided by two to get the waiting times
+	// because the time that passengers, goods, etc. wait is, on average,
+	// half the interval between services, because they do not all arrive
+	// just after the previous service has departed. 
+	uint16 estimated_waiting_time = get_service_frequency(halt, category) / 2;
+	fixed_list_tpl<uint16, 32> tmp;
+	waiting_time_set set;
+	set.times = tmp;
+	set.month = 2; // Set this so as to be stale and flushed quickly to keep this up to date.
+	set.times.add_to_tail(estimated_waiting_time); 
+	waiting_times[category].put(halt.get_id(), set); // This is to avoid repeat calculation of the service interval, which is computationally intensive.
+	return estimated_waiting_time;
 }
 
 uint16 haltestelle_t::get_service_frequency(halthandle_t destination, uint8 category) const
@@ -1705,20 +1723,25 @@ uint16 haltestelle_t::get_service_frequency(halthandle_t destination, uint8 cate
 		}
 		else
 		{
-			uint32 proportion = timing * 10 / service_frequency;
-			if(service_frequency < timing)
+			// There are multiple lines serving this stop, so compute for multiple line timing
+			if(service_frequency == timing)
 			{
-				service_frequency = ((service_frequency * 10 / proportion) + service_frequency) / 2;
+				// Two equally timed lines: halve the service frequency
+				service_frequency /= 2;
 			}
-			else if(proportion == 0)
+			else if(service_frequency > timing)
 			{
-				// Where the timing is so much lower than the existing frequency that the proportion is zero,
-				// the infrequent service is probably insignificant in the timing so far.
-				service_frequency =  max(1, timing);
+				// The new timing is more frequent than the service interval calculated so far
+				uint32 proportion_10 = (service_frequency * 10) / timing; // This is the number of new convoys per old convoy in any given time, * 10
+				proportion_10 += 10; // Adding 10 to add back the original convoy: this is now the total number of convoys per service_frequency, * 10
+				service_frequency = (service_frequency * 10) / proportion_10;
 			}
 			else
 			{
-				service_frequency = max(1, ((timing * 10 / proportion) + timing) / 2);
+				// The new timing is less frequent than the service interval calculated so far
+				uint32 proportion_10 = (timing * 10) / service_frequency; // This is the number of new convoys per old convoy in any given time, * 10
+				proportion_10 += 10; // Adding 10 to add back the original convoy: this is now the total number of convoys per service_frequency, * 10
+				service_frequency = (timing * 10) / proportion_10;
 			}
 		}
 	}
@@ -2067,7 +2090,8 @@ bool haltestelle_t::hole_ab( slist_tpl<ware_t> &fracht, const ware_besch_t *wtyp
 	const uint8 catg_index = wtyp->get_catg_index();
 	vector_tpl<ware_t> *warray = waren[catg_index];
 	if(warray  &&  warray->get_count() > 0)
-	{		binary_heap_tpl<ware_t*> goods_to_check;
+	{		
+		binary_heap_tpl<ware_t*> goods_to_check;
 		for(uint32 i = 0;  i < warray->get_count();  )
 		{
 			// Load first the goods/passengers/mail that have been waiting the longest.
@@ -2092,10 +2116,13 @@ bool haltestelle_t::hole_ab( slist_tpl<ware_t> &fracht, const ware_besch_t *wtyp
 			ware_t* const next_to_load = goods_to_check.pop();
 			uint8 index = fpl->get_aktuell();
 			bool reverse = cnv->get_reverse_schedule();
-			fpl->increment_index(&index, &reverse);
+			if(cnv->get_state() != convoi_t::REVERSING)
+			{
+				fpl->increment_index(&index, &reverse);
+			}
 
 			int count = 0;
-			while(index != fpl->get_aktuell())
+			while(index != fpl->get_aktuell() || (cnv->get_state() == convoi_t::REVERSING && count == 0))
 			{
 				halthandle_t& plan_halt = cached_halts[index];
 				if(plan_halt.is_null())
@@ -2126,7 +2153,7 @@ bool haltestelle_t::hole_ab( slist_tpl<ware_t> &fracht, const ware_besch_t *wtyp
 					// Check to see whether this is the convoy departing from this stop that will arrive at the destination the soonest.
 		
 					convoihandle_t fast_convoy;
-					const sint64 best_arrival_time = calc_earliest_arrival_time_at(next_transfer, fast_convoy);
+					const sint64 best_arrival_time = calc_earliest_arrival_time_at(next_transfer, fast_convoy, catg_index);
 					const arrival_times_map& next_transfer_arrivals = next_transfer->get_estimated_convoy_arrival_times();
 					const sint64 this_arrival_time = next_transfer_arrivals.get(cnv->self.get_id());
 
@@ -2672,8 +2699,8 @@ uint32 haltestelle_t::liefere_an(ware_t ware, uint8 walked_between_stations)
 		if(is_within_walking_distance_of(ware.get_ziel()) || is_within_walking_distance_of(ware.get_zwischenziel()) || destination_is_within_coverage)
 		{
 			convoihandle_t dummy; 
-			const sint64 best_arrival_time_destination_stop = calc_earliest_arrival_time_at(ware.get_ziel(), dummy);
-			sint64 best_arrival_time_transfer = ware.get_zwischenziel() != ware.get_ziel() ? calc_earliest_arrival_time_at(ware.get_zwischenziel(), dummy) : SINT64_MAX_VALUE;
+			const sint64 best_arrival_time_destination_stop = calc_earliest_arrival_time_at(ware.get_ziel(), dummy, ware.get_besch()->get_catg_index());
+			sint64 best_arrival_time_transfer = ware.get_zwischenziel() != ware.get_ziel() ? calc_earliest_arrival_time_at(ware.get_zwischenziel(), dummy, ware.get_besch()->get_catg_index()) : SINT64_MAX_VALUE;
 
 			const sint64 arrival_after_walking_to_destination = welt->seconds_to_ticks(welt->walking_time_tenths_from_distance((uint32)straight_line_distance_destination) * 6) + welt->get_zeit_ms();
 
@@ -2802,7 +2829,7 @@ uint32 haltestelle_t::deposit_ware_at_destination(ware_t ware)
 
 void haltestelle_t::info(cbuffer_t & buf, bool dummy) const
 {
-	if(  translator::get_lang()->utf_encoded && has_character( 0x263A ) ) {
+	if( has_character( 0x263A ) ) {
 		utf8 happy[4], unhappy[4];
 		happy[ utf16_to_utf8( 0x263A, happy ) ] = 0;
 		unhappy[ utf16_to_utf8( 0x2639, unhappy ) ] = 0;
@@ -4785,30 +4812,47 @@ void haltestelle_t::calc_transfer_time()
 	const uint32 walking_around = welt->walking_time_tenths_from_distance(length_around);
 	// Guess that someone has to walk roughly from the middle to one end, so divide by *4*.
 	// Finally, round down to a uint16 (just in case).
-	transfer_time = min( walking_around / 4, 65535 );
+	transfer_time = min(walking_around / 4, 65535);
 
 	// Repeat the process for the transshipment time.  (This is all inlined.)
 	const uint32 hauling_around = welt->walk_haulage_time_tenths_from_distance(length_around);
-	transshipment_time = min( hauling_around / 4, 65535 );
+	transshipment_time = min(hauling_around / 4, 65535);
 
 	// Adjust for overcrowding - transfer time increases with a more crowded stop.
 	// TODO: Better separate waiting times for different types of goods.
-	const sint64 waiting = (financial_history[0][HALT_WAITING] + financial_history[0][HALT_WAITING]) / 2ll;
 
-	if(capacity[0] > 0 && waiting > capacity[0])
+	const uint8 max_categories = warenbauer_t::get_max_catg_index();
+	const sint64 waiting_passengers = waren[0] ? waren[0]->get_count() : 0;
+	sint64 waiting_goods = 0;
+
+	for(uint8 i = 2; i < max_categories; i++)
 	{
-		const sint64 overcrowded_proporion_passengers = waiting * 10ll / capacity[0];
-		transfer_time = max(transfer_time, (uint16)overcrowded_proporion_passengers);
-		transfer_time *= (2 * (uint16)overcrowded_proporion_passengers);
-		transfer_time /= 10;
+		if(waren[i])
+		{
+			FOR(vector_tpl<ware_t>, const &w, *waren[i])
+			{
+				if(waren[i])
+				{
+					vector_tpl<ware_t> * warray = waren[i];
+					FOR(vector_tpl<ware_t>, & j, *warray)
+					{
+						waiting_goods += j.menge;
+					}
+				}
+			}
+		}
 	}
 
-	if(capacity[2] > 0 && waiting > capacity[2])
+	if(capacity[0] > 0 && waiting_passengers > capacity[0])
 	{
-		const sint64 overcrowded_proportion_goods = waiting * 10ll / capacity[2];
-		transshipment_time = max(transfer_time, (uint16)overcrowded_proportion_goods);
-		transshipment_time *= (2 * (uint16)overcrowded_proportion_goods);
-		transshipment_time /= 10;
+		const sint64 overcrowded_proporion_passengers = waiting_passengers * 10ll / capacity[0];
+		transfer_time = min(max(transfer_time, ((uint16)overcrowded_proporion_passengers * (2 * (uint16)overcrowded_proporion_passengers)) / 10), transfer_time * 10);
+	}
+
+	if(capacity[2] > 0 && waiting_goods > capacity[2])
+	{
+		const sint64 overcrowded_proportion_goods = waiting_goods * 10ll / capacity[2];
+		transshipment_time = min(max(transshipment_time, ((uint16)overcrowded_proportion_goods * (2 * (uint16)overcrowded_proportion_goods)) / 10), transshipment_time * 10);
 	}
 
 	// For reference, with a transshipment speed of 1 km/h and a walking speed of 5 km/h,
@@ -4818,7 +4862,7 @@ void haltestelle_t::calc_transfer_time()
 	// A large 8 x 4 station has an 18:42 penalty for freight and a 3:42 penalty for passengers.
 
 	// TODO: Consider more sophisticated things here, such as allowing certain extensions to
-	// reduce this transshipment time (convyer belts, etc.).
+	// reduce this transshipment time (convyer belts, travellators, etc.).
 }
 
 void haltestelle_t::add_waiting_time(uint16 time, halthandle_t halt, uint8 category, bool do_not_reset_month)
@@ -4887,7 +4931,7 @@ void haltestelle_t::remove_convoy(convoihandle_t convoy)
 	}
 }
 
-sint64 haltestelle_t::calc_earliest_arrival_time_at(halthandle_t halt, convoihandle_t &convoy)
+sint64 haltestelle_t::calc_earliest_arrival_time_at(halthandle_t halt, convoihandle_t &convoy, uint8 catg_index)
 {
 	const arrival_times_map& next_transfer_arrivals = halt->get_estimated_convoy_arrival_times();
 	sint64 best_arrival_time = SINT64_MAX_VALUE;
@@ -4904,6 +4948,12 @@ sint64 haltestelle_t::calc_earliest_arrival_time_at(halthandle_t halt, convoihan
 		if(arrival_convoy->get_no_load())
 		{
 			// Do not wait for a convoy that is set not to load.
+			continue;
+		}
+
+		if(!arrival_convoy->get_goods_catg_index().is_contained(catg_index))
+		{
+			// Do not wait for a convoy that cannot convey this type of load.
 			continue;
 		}
 

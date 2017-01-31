@@ -359,7 +359,7 @@ money_frame_t::money_frame_t(player_t *player)
 	chart.set_size(scr_size(457,HEIGHT_OF_CHART));
 	chart.set_dimension(MAX_PLAYER_HISTORY_YEARS, 10000);
 	chart.set_seed(welt->get_last_year());
-	chart.set_background(MN_GREY1);
+	chart.set_background(SYSCOL_CHART_BACKGROUND);
 	chart.set_ltr(env_t::left_to_right_graphs);
 	//CHART YEAR END
 
@@ -368,7 +368,7 @@ money_frame_t::money_frame_t(player_t *player)
 	mchart.set_size(scr_size(457,HEIGHT_OF_CHART));
 	mchart.set_dimension(MAX_PLAYER_HISTORY_MONTHS, 10000);
 	mchart.set_seed(0);
-	mchart.set_background(MN_GREY1);
+	mchart.set_background(SYSCOL_CHART_BACKGROUND);
 	mchart.set_ltr(env_t::left_to_right_graphs);
 	//CHART MONTH END
 
@@ -384,7 +384,7 @@ money_frame_t::money_frame_t(player_t *player)
 	year_month_tabs.add_tab( &year_dummy, translator::translate("Years"));
 	year_month_tabs.add_tab( &month_dummy, translator::translate("Months"));
 	year_month_tabs.set_pos(scr_coord(0, LINESPACE-2));
-	year_month_tabs.set_size(scr_size(lyl_x+25, TAB_HEADER_V_SIZE));
+	year_month_tabs.set_size(scr_size(lyl_x+25, D_TAB_HEADER_HEIGHT));
 	add_component(&year_month_tabs);
 
 	add_component(&conmoney);
@@ -500,7 +500,7 @@ money_frame_t::money_frame_t(player_t *player)
 	transport_type_c.set_max_size( scr_size( 85 + 14 + 14, TT_MAX * BUTTONSPACE ) );
 	for(int i=0, count=0; i<TT_MAX; ++i) {
 		if (!is_chart_table_zero(i)) {
-			transport_type_c.append_element( new gui_scrolled_list_t::const_text_scrollitem_t(translator::translate(transport_type_values[i]), COL_BLACK));
+			transport_type_c.append_element( new gui_scrolled_list_t::const_text_scrollitem_t(translator::translate(transport_type_values[i]), SYSCOL_TEXT));
 			transport_types[ count++ ] = i;
 		}
 	}
@@ -508,6 +508,8 @@ money_frame_t::money_frame_t(player_t *player)
 	transport_type_c.set_focusable( false );
 	add_component(&transport_type_c);
 	transport_type_c.add_listener( this );
+
+	set_focus( &transport_type_c );
 
 	const int WINDOW_HEIGHT = TOP_OF_CHART + HEIGHT_OF_CHART + 10 + BUTTONSPACE * 2 ; // formerly 340
 	// The extra room below the chart is for (a) labels, (b) year label (BUTTONSPACE), (c) empty space
@@ -582,7 +584,7 @@ void money_frame_t::draw(scr_coord pos, scr_size size)
 
 	// warning/success messages
 	if(player->get_player_nr()!=1  &&  welt->get_scenario()->active()) {
-		warn.set_color( COL_BLACK );
+		warn.set_color( SYSCOL_TEXT );
 		sint32 percent = welt->get_scenario()->get_completion(player->get_player_nr());
 		if (percent >= 0) {
 			sprintf( str_buf[15], translator::translate("Scenario complete: %i%%"), percent );

@@ -1322,7 +1322,7 @@ void karte_t::distribute_cities( settings_t const * const sets, sint16 old_x, si
 		if(besch == NULL) 
 		{
 			// Hajo: try some default (might happen with timeline ... )
-			besch = wegbauer_t::weg_search(road_wt,80,5,get_timeline_year_month(),weg_t::type_flat);
+			besch = wegbauer_t::weg_search(road_wt, 80, 5, get_timeline_year_month(), weg_t::type_flat, 1);
 		}
 
 		wegbauer_t bauigel (NULL);
@@ -3825,6 +3825,7 @@ DBG_MESSAGE( "karte_t::rotate90()", "called" );
 	for(  int i=0;  i<MAX_PLAYER_COUNT;  i++  ) {
 		if(  players[i]  ) {
 			players[i]->rotate90( cached_size.x );
+			selected_tool[i]->rotate90(cached_size.x);
 		}
 	}
 
@@ -4651,6 +4652,9 @@ void karte_t::new_month()
 	wegbauer_t::new_month();
 	INT_CHECK("simworld 1299");
 
+	hausbauer_t::new_month();
+	INT_CHECK("simworld 1299");
+
 	// Check whether downstream substations have become engulfed by
 	// an expanding city.
 	FOR(slist_tpl<senke_t *>, & senke_iter, senke_t::senke_list)
@@ -4682,7 +4686,7 @@ void karte_t::new_month()
 	if( !env_t::networkmode && env_t::autosave>0 && last_month%env_t::autosave==0 && !win_get_magic(magic_welt_gui_t) ) {
 		char buf[128];
 		sprintf( buf, "save/autosave%02i.sve", last_month+1 );
-		save( buf, loadsave_t::autosave_mode, env_t::savegame_version_str, env_t::savegame_ex_version_str, true );
+		save( buf, loadsave_t::autosave_mode, env_t::savegame_version_str, env_t::savegame_ex_version_str, env_t::savegame_ex_revision_str, true );
 	}
 
 	settings.update_max_alternative_destinations_commuting(commuter_targets.get_sum_weight());
@@ -4753,8 +4757,10 @@ void karte_t::recalc_average_speed()
 	}
 
 	//	DBG_MESSAGE("karte_t::recalc_average_speed()","");
-	if(use_timeline()) {
-		for(int i=road_wt; i<=air_wt; i++) {
+	if(use_timeline())
+	{
+		for(int i=road_wt; i<=air_wt; i++)
+		{
 			const char *vehicle_type=NULL;
 			switch(i) {
 				case road_wt:
@@ -4832,7 +4838,6 @@ void karte_t::recalc_average_speed()
 			DBG_MESSAGE("karte_t::new_month()","Month %d has started", last_month);
 			city_road = wegbauer_t::weg_search(road_wt,50,get_timeline_year_month(),weg_t::type_flat);
 		}
-
 	}
 	else {
 		// defaults
@@ -5094,6 +5099,39 @@ rands[19] = get_random_seed();
 	}
 
 	recalc_season_snowline(true);
+
+	if(!time_interval_signals_to_check.empty())
+	{
+		const sint64 caution_interval_ticks = seconds_to_ticks(settings.get_time_interval_seconds_to_caution());
+		const sint64 clear_interval_ticks = seconds_to_ticks(settings.get_time_interval_seconds_to_clear()); 
+
+		for(vector_tpl<signal_t*>::iterator iter = time_interval_signals_to_check.begin(); iter != time_interval_signals_to_check.end();) 
+		{
+			signal_t* sig = *iter;
+			if(((sig->get_train_last_passed() + clear_interval_ticks) < ticks) && sig->get_no_junctions_to_next_signal())
+			{
+				iter = time_interval_signals_to_check.swap_erase(iter);
+				sig->set_state(roadsign_t::clear_no_choose);
+			}
+			else if(sig->get_state() == roadsign_t::danger && ((sig->get_train_last_passed() + caution_interval_ticks) < ticks) && sig->get_no_junctions_to_next_signal())
+			{
+				if(sig->get_besch()->is_pre_signal())
+				{
+					sig->set_state(roadsign_t::clear_no_choose);
+				}
+				else
+				{
+					sig->set_state(roadsign_t::caution_no_choose);
+				}
+				
+				++iter;
+			}
+			else 
+			{
+				++iter;
+			}
+		}
+	}
 
 	// number of playing clients changed
 	if(  env_t::server  &&  last_clients!=socket_list_t::get_playing_clients()  ) {
@@ -6701,7 +6739,7 @@ bool karte_t::play_sound_area_clipped(koord const k, uint16 const idx) const
 }
 
 
-void karte_t::save(const char *filename, loadsave_t::mode_t savemode, const char *version_str, const char *ex_version_str, bool silent )
+void karte_t::save(const char *filename, loadsave_t::mode_t savemode, const char *version_str, const char *ex_version_str, const char* ex_revision_str, bool silent )
 {
 DBG_MESSAGE("karte_t::speichern()", "saving game to '%s'", filename);
 	loadsave_t  file;
@@ -6714,7 +6752,7 @@ DBG_MESSAGE("karte_t::speichern()", "saving game to '%s'", filename);
 		// Make local saving/loading faster in network mode.
 		savemode = loadsave_t::zipped;
 	}
-	if(!file.wr_open( savename, savemode, env_t::objfilename.c_str(), version_str, ex_version_str )) {
+	if(!file.wr_open( savename, savemode, env_t::objfilename.c_str(), version_str, ex_version_str, ex_revision_str )) {
 		create_win(new news_img("Kann Spielstand\nnicht speichern.\n"), w_info, magic_none);
 		dbg->error("karte_t::speichern()","cannot open file for writing! check permissions!");
 	}
@@ -6742,7 +6780,7 @@ DBG_MESSAGE("karte_t::speichern()", "saving game to '%s'", filename);
 }
 
 
-void karte_t::save(loadsave_t *file,bool silent)
+void karte_t::save(loadsave_t *file, bool silent)
 {
 	bool needs_redraw = false;
 
@@ -7086,6 +7124,7 @@ bool karte_t::load(const char *filename)
 	display_show_load_pointer(true);
 	loadsave_t file;
 	cities_awaiting_private_car_route_check.clear();
+	time_interval_signals_to_check.clear();
 
 	// clear hash table with missing paks (may cause some small memory loss though)
 	missing_pak_names.clear();
@@ -7410,6 +7449,7 @@ void karte_t::load(loadsave_t *file)
 	// some functions (finish_rd) need to know what version was loaded
 	load_version.version = file->get_version();
 	load_version.experimental_version = file->get_experimental_version();
+	load_version.experimental_revision = file->get_experimental_revision();
 
 	if(  env_t::networkmode  ) {
 		// clear the checklist history
@@ -7996,7 +8036,7 @@ DBG_MESSAGE("karte_t::load()", "%d factories loaded", fab_list.get_count());
 			{
 				// Power stations are excluded from the target weight:
 				// a different system is used for them.
-				weight = factory_type->get_gewichtung();
+				weight = max(factory_type->get_gewichtung(), 1); // To prevent divisions by zero
 				actual_industry_density += (100 / weight);
 			}
 		}
@@ -8703,16 +8743,11 @@ void karte_t::network_game_set_pause(bool pause_, uint32 syncsteps_)
 		}
 		else {
 			step_mode = FIX_RATIO;
-			if (!env_t::server) {
-				/* make sure, the server is really that far ahead
-				 * Sleep() on windows often returns before!
-				 */
-				unsigned long const ms = dr_time() + (settings.get_server_frames_ahead() + (uint32)env_t::additional_client_frames_behind) * fix_ratio_frame_time;
-				while(  dr_time()<ms  ) {
-					dr_sleep ( 10 );
-				}
-			}
 			reset_timer();
+			if(  !env_t::server  ) {
+				// allow server to run ahead the specified number of frames, plus an extra 50%. Better to catch up than be ahead.
+				next_step_time = dr_time() + (settings.get_server_frames_ahead() + (uint32)env_t::additional_client_frames_behind) * fix_ratio_frame_time * 3 / 2;
+			}
 		}
 	}
 	else {
@@ -8771,24 +8806,48 @@ void karte_t::process_network_commands(sint32 *ms_difference)
 	}
 
 	// process the received command
-	while (nwc) {
+	while(  nwc  ) {
 		// check timing
-		if (nwc->get_id()==NWC_CHECK) {
+		if(  nwc->get_id() == NWC_CHECK  ) {
 			// checking for synchronisation
 			nwc_check_t* nwcheck = (nwc_check_t*)nwc;
+
 			// are we on time?
-			*ms_difference = 0;
-			sint64 const difftime = (sint64)next_step_time - dr_time() + ((sint64)nwcheck->server_sync_step - sync_steps - settings.get_server_frames_ahead() - env_t::additional_client_frames_behind) * fix_ratio_frame_time;
-			if(  difftime<0  ) {
+			const uint32 timems = dr_time();
+			const sint32 time_to_next = (sint32)next_step_time - (sint32)timems; // +'ve - still waiting for next,  -'ve - lagging
+			const sint64 frame_timediff = ((sint64)nwcheck->server_sync_step - sync_steps - settings.get_server_frames_ahead() - env_t::additional_client_frames_behind) * fix_ratio_frame_time; // +'ve - server is ahead,  -'ve - client is ahead
+			const sint64 timediff = time_to_next + frame_timediff;
+			dbg->warning("NWC_CHECK", "time difference to server %lli", frame_timediff );
+
+			if(  frame_timediff < (0 - (sint64)settings.get_server_frames_ahead() - (sint64)env_t::additional_client_frames_behind) * (sint64)fix_ratio_frame_time / 2  ) {
+				// running way ahead - more than half margin, simply set next_step_time ahead to where it should be
+				next_step_time = (sint64)timems - frame_timediff;
+			}
+			else if(  frame_timediff < 0  ) {
 				// running ahead
-				next_step_time += (uint32)(-difftime);
+				if(  time_to_next > -frame_timediff  ) {
+					// already waiting longer than how far we're ahead, so set wait time shorter to the time ahead.
+					next_step_time = (sint64)timems - frame_timediff;
 			}
 			else {
-				// more gentle catching up
-				*ms_difference = (sint32)difftime;
+				// gentle slowing down
+					*ms_difference = timediff;
+				}
 			}
-			dbg->message("NWC_CHECK","time difference to server %lli",difftime);
+			else if(  frame_timediff > 0  ) {
+				// running behind
+				if(  time_to_next > (sint32)fix_ratio_frame_time / 4  ) {
+					// behind but we're still waiting for the next step time - get going.
+					next_step_time = timems;
+					*ms_difference = frame_timediff;
+				}
+				else {
+					// gentle catching up
+					*ms_difference = timediff;
+				}
+			}
 		}
+
 		// check random number generator states
 		if(  env_t::server  &&  nwc->get_id()==NWC_TOOL  ) {
 			nwc_tool_t *nwt = dynamic_cast<nwc_tool_t *>(nwc);
@@ -9039,15 +9098,21 @@ bool karte_t::interactive(uint32 quit_month)
 #endif
 				}
 				else if(  step_mode==FIX_RATIO  ) {
-					next_step_time += fix_ratio_frame_time;
-					if(  ms_difference>5  ) {
-						next_step_time -= 5;
-						ms_difference -= 5;
+					if(  env_t::server  ) {
+						next_step_time += fix_ratio_frame_time;
 					}
-					else if(  ms_difference<-5  ) {
-						next_step_time += 5;
-						ms_difference += 5;
+					else {
+						const sint32 lag_time = (sint32)time - (sint32)next_step_time;
+						if(  lag_time > 0  ) {
+							ms_difference += lag_time;
+							next_step_time = time;
+						}
+
+						const sint32 nst_diff = clamp( ms_difference, -fix_ratio_frame_time * 2, fix_ratio_frame_time * 8 ) / 10; // allows timerate between 83% and 500% of normal
+						next_step_time += fix_ratio_frame_time - nst_diff;
+						ms_difference -= nst_diff;
 					}
+
 					sync_step( (fix_ratio_frame_time*time_multiplier)/16, true, true );
 #ifdef DEBUG_SIMRAND_CALLS
 					station_check("karte_t::interactive FIX_RATIO after sync_step", this);
@@ -9076,9 +9141,13 @@ bool karte_t::interactive(uint32 quit_month)
 
 					// some serverside tasks
 					if(  env_t::networkmode  &&  env_t::server  ) {
-						// broadcast sync info
-						if (  (network_frame_count==0  &&  (sint64)dr_time()-(sint64)next_step_time>fix_ratio_frame_time*2)
-								||  (sync_steps % env_t::server_sync_steps_between_checks)==0  ) {
+						// broadcast sync info regularly and when lagged
+						const sint64 timelag = (sint32)dr_time() - (sint32)next_step_time;
+						if(  (network_frame_count == 0  &&  timelag > fix_ratio_frame_time * settings.get_server_frames_ahead() / 2)  ||  (sync_steps % env_t::server_sync_steps_between_checks) == 0  ) {
+							if(  timelag > fix_ratio_frame_time * settings.get_frames_per_step()  ) {
+								// log when server is lagged more than one step
+								dbg->warning("karte_t::interactive", "server lagging by %lli", timelag );
+							}
 							nwc_check_t* nwc = new nwc_check_t(sync_steps + 1, map_counter, LCHKLST(sync_steps), sync_steps);
 							network_send_all(nwc, true);
 						}
@@ -9126,7 +9195,7 @@ bool karte_t::interactive(uint32 quit_month)
 		pak_name.append( env_t::objfilename );
 		pak_name.erase( pak_name.length()-1 );
 		pak_name.append( ".sve" );
-		save( pak_name.c_str(), loadsave_t::autosave_mode, SERVER_SAVEGAME_VER_NR, EXPERIMENTAL_VER_NR, false );
+		save( pak_name.c_str(), loadsave_t::autosave_mode, SERVER_SAVEGAME_VER_NR, EXPERIMENTAL_VER_NR, EXPERIMENTAL_REVISION_NR, false );
 	}
 
 	if(  get_current_month() >= quit_month  ) {

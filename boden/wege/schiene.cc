@@ -56,6 +56,12 @@ void schiene_t::cleanup(player_t *)
 	}
 }
 
+void schiene_t::rotate90()
+{
+	direction = ribi_t::rotate90(direction); 
+	weg_t::rotate90();
+}
+
 
 void schiene_t::info(cbuffer_t & buf, bool is_bridge) const
 {
@@ -81,12 +87,12 @@ void schiene_t::info(cbuffer_t & buf, bool is_bridge) const
  * true, if this rail can be reserved
  * @author prissi
  */
-bool schiene_t::reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t)
+bool schiene_t::reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t, bool check_directions_at_junctions)
 {
-	if(can_reserve(c, dir, t)) 
+	if(can_reserve(c, dir, t, check_directions_at_junctions)) 
 	{
 		ribi_t::ribi old_direction = direction;
-		if(type == block && t == directional && c != reserved && reserved.is_bound())
+		if(type == block && t == directional && reserved.is_bound())
 		{
 			// Do not actually reserve here, as the directional reservation 
 			// is already done, but show that this is reservable. 
@@ -101,7 +107,7 @@ bool schiene_t::reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t)
 		 * and there are switching graphics
 		 */
 		if(t == block && ribi_t::is_threeway(get_ribi_unmasked())  &&  ribi_t::ist_kurve(dir)  &&  get_besch()->has_switch_bild()  ) {
-			mark_image_dirty( get_bild(), 0 );
+			mark_image_dirty( get_image(), 0 );
 			mark_image_dirty( get_front_image(), 0 );
 			set_images(image_switch, get_ribi_unmasked(), is_snow(), (dir==ribi_t::nordost  ||  dir==ribi_t::suedwest) );
 			set_flag( obj_t::dirty );
@@ -113,6 +119,13 @@ bool schiene_t::reserve(convoihandle_t c, ribi_t::ribi dir, reservation_type t)
 		{
 			if(signal_t* sig = get_signal(dir))
 			{
+				if(sig->is_bidirectional())
+				{
+					// A suitable state for facing in the opposite direction
+					// will not be a suitable state for facing in this new
+					// direction.
+					sig->set_state(roadsign_t::danger);
+				}
 				sig->calc_image();
 			}
 		}
@@ -247,8 +260,7 @@ void schiene_t::rdwr(loadsave_t *file)
 	if(file->get_experimental_version() >= 12)
 #endif
 	{
-		// TODO: Enable this
-		/*uint16 reserved_index = reserved.get_id();
+		uint16 reserved_index = reserved.get_id();
 		file->rdwr_short(reserved_index); 
 		reserved.set_id(reserved_index); 
 
@@ -258,6 +270,6 @@ void schiene_t::rdwr(loadsave_t *file)
 
 		uint8 d = (uint8)direction;
 		file->rdwr_byte(d);
-		direction = (ribi_t::ribi)d; */
+		direction = (ribi_t::ribi)d; 
 	}
 }
