@@ -2,7 +2,7 @@
 #include "simtypes.h"
 
 
-static inline int is_1byte_seq(utf8 c) { return c<0x80; }	// normal ASCII (equivalen to (c & 0x80) == 0x00)
+static inline int is_1byte_seq(utf8 c) { return c<0x80; }	// normal ASCII (equivalent to (c & 0x80) == 0x00)
 static inline int is_2byte_seq(utf8 c) { return (c & 0xE0) == 0xC0; } // 2 Byte sequence, total letter value is 110xxxxx 10yyyyyy => 00000xxx xxyyyyyy
 static inline int is_3byte_seq(utf8 c) { return (c & 0xF0) == 0xE0; }	// 3 Byte sequence, total letter value is 1110xxxx 10yyyyyy 10zzzzzz => xxxxyyyy yyzzzzzz
 static inline int is_cont_char(utf8 c) { return (c & 0xC0) == 0x80; }	// the bytes in a sequence have always the format 10xxxxxx
@@ -20,7 +20,7 @@ size_t utf8_get_next_char(const utf8* text, size_t pos)
 }
 
 
-long utf8_get_prev_char(const utf8* text, long pos)
+sint32 utf8_get_prev_char(const utf8* text, sint32 pos)
 {
 /* not needed, since the only position calling it, checks it too
 	if(pos==0) {
@@ -97,7 +97,7 @@ int utf16_to_utf8(utf16 c, utf8* out)
 
 
 // helper function to convert unicode into latin2
-static utf16 latin2_to_unicode[96] =
+static utf16 latin2_to_unicode_lookup[96] =
 {
 	0x00A0, // char 0xA0
 	0x0104, // char 0xA1
@@ -199,12 +199,19 @@ static utf16 latin2_to_unicode[96] =
 
 
 
-utf8 unicode_to_latin2( utf16 chr )
+uint8 unicode_to_latin2( utf16 chr )
 {
 	for(  utf8 i=0;  i<96;  i++  ) {
-		if(  latin2_to_unicode[i]==chr  ) {
+		if(  latin2_to_unicode_lookup[i]==chr  ) {
 			return (i+0xA0);
 		}
 	}
 	return 0;
+}
+
+
+
+utf16 latin2_to_unicode( uint8 chr )
+{
+	return chr >= 0xA0 ? latin2_to_unicode_lookup[chr-0xA0] : chr;
 }

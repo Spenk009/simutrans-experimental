@@ -15,16 +15,12 @@ SQInteger exp_factory_constructor(HSQUIRRELVM vm)
 	sint16 x = param<sint16>::get(vm, 2);
 	sint16 y = param<sint16>::get(vm, 3);
 	// set coordinates
-	sq_pushstring(vm, "x", -1);
-	sq_pushinteger(vm, x);
-	sq_set(vm, 1);
-	sq_pushstring(vm, "y", -1);
-	sq_pushinteger(vm, y);
-	sq_set(vm, 1);
+	set_slot(vm, "x", x, 1);
+	set_slot(vm, "y", y, 1);
 	// transform coordinates
 	koord pos(x,y);
 	welt->get_scenario()->koord_sq2w(pos);
-	fabrik_t *fab =  fabrik_t::get_fab(welt, pos);
+	fabrik_t *fab =  fabrik_t::get_fab(pos);
 	if (!fab) {
 		sq_raise_error(vm, "No factory found at (%s)", pos.get_str());
 		return -1;
@@ -33,21 +29,19 @@ SQInteger exp_factory_constructor(HSQUIRRELVM vm)
 	for (int io=0; io<2; io++) {
 		sq_pushstring(vm, io==0 ? "input" : "output", -1);
 		sq_newtable(vm);
-		const array_tpl<ware_production_t> &prodslot = io==0 ? fab->get_eingang() :fab->get_ausgang();
+		const array_tpl<ware_production_t> &prodslot = io==0 ? fab->get_input() :fab->get_output();
 		for(uint32 p=0; p < prodslot.get_count(); p++) {
 			// create slots 'good name' <- {x,y,name}   //'factory_production'
 			sq_pushstring(vm, prodslot[p].get_typ()->get_name(), -1);
 			// create instance of factory_production_x
 			if(!SQ_SUCCEEDED(push_instance(vm, "factory_production_x",
-				x, y, prodslot[p].get_typ()->get_name(), p + (io > 0  ?  fab->get_eingang().get_count() : 0))))
+				x, y, prodslot[p].get_typ()->get_name(), p + (io > 0  ?  fab->get_input().get_count() : 0))))
 			{
 				// create empty table
 				sq_newtable(vm);
 			}
 			// set max value
-			sq_pushstring(vm, "max_storage", -1);
-			sq_pushinteger(vm, prodslot[p].max >> fabrik_t::precision_bits);
-			sq_set(vm, -3);
+			set_slot(vm, "max_storage", prodslot[p].max >> fabrik_t::precision_bits, -1);
 			// put class into table
 			sq_newslot(vm, -3, false);
 		}
@@ -93,13 +87,7 @@ SQInteger world_get_factory_by_index(HSQUIRRELVM vm)
 {
 	uint32 index = param<uint32>::get(vm, -1);
 	fabrik_t *fab = welt->get_fab(index);
-	koord pos(koord::invalid);
-	if (fab) {
-		pos = fab->get_pos().get_2d();
-		// transform coordinates
-		welt->get_scenario()->koord_w2sq(pos);
-	}
-	return push_instance(vm, "factory_x",  pos.x, pos.y);
+	return param<fabrik_t*>::push(vm, fab);
 }
 
 

@@ -5,15 +5,17 @@
 #include "simsys_w32_png.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #error "Only Windows has GDI+!"
 #endif
 
-// windows Bibliotheken DirectDraw 5.x
+// DirectDraw 5.x Windows libraries
 // windows.h defines min and max macros which we don't want
 #define NOMINMAX 1
 #include <windows.h>
+#include <basetyps.h>
 
 // structures, since we use the C-interface
 struct ImageCodecInfo
@@ -62,7 +64,7 @@ static int (WINAPI* GdipDeleteCachedBitmap)(ULONG* image);
 static int (WINAPI* GdipSaveImageToFile)(ULONG* image, WCHAR const* filename, CLSID const* clsidEncoder, EncoderParameters const* encoderParams);
 
 
-// Die GetEncoderClsid() Funktion wurde einfach aus der MSDN/PSDK Doku kopiert.
+// Die GetEncoderClsid() Funktion wurde single aus der MSDN/PSDK Doku kopiert.
 // Zu finden mit dem Suchstring "Retrieving the Class Identifier for an Encoder"
 // Sucht zu z.B. 'image/jpeg' den passenden Encoder und liefert dessen CLSID...
 static int GetEncoderClsid(wchar_t const* const format, CLSID* const pClsid)

@@ -8,44 +8,55 @@
 #ifndef simdebug_h
 #define simdebug_h
 
-// do not check assertions
-//#define NDEBUG 1
+
+ // do not check assertions
+ //#define NDEBUG 1
 
 
-// check assertions
-//#undef NDEBUG
-//#define NDEBUG
+ // check assertions
+ //#undef NDEBUG
+ //#define NDEBUG
 
 
 #include <assert.h>
 
-
-
-#ifdef __cplusplus
-
 #include "utils/log.h"
 
-/**
- * Never access this directly!
+ /**
+ * Logger instance, this is a globally exported object.
  * @author Hj. Malthaner
  */
 extern log_t *dbg;
 
 
 /**
- * Inits logging facility.
- * @author Hj. Malthaner
- */
-void init_logging(const char *logname, bool force_flush, bool log_debug, const char *greeting, const char* syslogtag );
+* Inits logging facility.
+* @author Hj. Malthaner
+*/
+void init_logging(const char *logname, bool force_flush, bool log_debug, const char *greeting, const char* syslogtag);
 
-#ifndef DEBUG
+#ifdef MSG_LEVEL
 
-// nothing to debug -> then ignore
-#define DBG_MESSAGE(i,...) ;
-#define DBG_DEBUG(i,...) ;
+#if MSG_LEVEL >= 4
+#define DBG_DEBUG4 dbg->debug
+#define DBG_DEBUG dbg->message
+
+#elif MSG_LEVEL == 3
 #define DBG_DEBUG4(i,...) ;
+#define DBG_MESSAGE dbg->message
+#define DBG_DEBUG dbg->message
 
-#else
+#elif MSG_LEVEL >= 1
+#define DBG_DEBUG4(i,...) ;
+#define DBG_MESSAGE(i,...) ;
+#define DBG_DEBUG dbg->message
+
+#endif
+
+#elif defined(DEBUG)
+
+// default level in undefinded
+#define MSG_LEVEL (3)
 
 //#define DBG_MESSAGE(i,...) dbg->message(i,__VA_ARGS__)
 //#define DBG_DEBUG(i,...) dbg->message(i,__VA_ARGS__)
@@ -53,7 +64,11 @@ void init_logging(const char *logname, bool force_flush, bool log_debug, const c
 #define DBG_DEBUG dbg->message
 #define DBG_DEBUG4 dbg->debug
 
-#endif
+#else
+// nothing to debug -> then ignore
+#define DBG_DEBUG4(i,...) ;
+#define DBG_MESSAGE(i,...) ;
+#define DBG_DEBUG(i,...) ;
 
 #endif
 

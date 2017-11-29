@@ -36,7 +36,7 @@ struct sample {
 
 /* this list contains all the samples
  */
-static sample samples[64];
+static sample samples[1024];
 
 /* all samples are stored chronologically there
  */
@@ -65,18 +65,16 @@ static SDL_AudioSpec output_audio_format;
 
 void sdl_sound_callback(void *, Uint8 * stream, int len)
 {
-	int c;
+	memset(stream, 0, len); // SDL2 requires the output stream to be fully written on every callback.
 
 	/*
 	* add all the sample that need to be played
 	*/
-	for (c = 0; c < CHANNELS; c++) {
-
+	for(  int c = 0;  c < CHANNELS;  c++  ) {
 		/*
 		* only do something, if the channel is used
 		*/
 		if (channels[c].sample != 255) {
-
 			sample * smp = &samples[channels[c].sample];
 
 			/*
@@ -93,7 +91,6 @@ void sdl_sound_callback(void *, Uint8 * stream, int len)
 		}
 	}
 }
-
 
 
 /**
@@ -165,7 +162,7 @@ bool dr_init_sound()
  */
 int dr_load_sample(const char *filename)
 {
-	if(use_sound>0  &&  samplenumber<64) {
+	if(use_sound>0  &&  samplenumber < 1024) {
 
 		SDL_AudioSpec wav_spec;
 		SDL_AudioCVT  wav_cvt;

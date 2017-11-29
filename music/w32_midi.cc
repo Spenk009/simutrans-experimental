@@ -60,7 +60,7 @@ int dr_load_midi(const char *filename)
 			// already absolute path
 			midi_filenames[i] = filename;
 
-			// need to make dos path seperators
+			// need to make dos path separators
 			for (char* j = midi_filenames[i]; *j != '\0'; ++j) {
 				if (*j == '/') {
 					*j = '\\';
@@ -109,7 +109,7 @@ void dr_play_midi(int key)
  * Stops playing MIDI file
  * By Owen Rudge
  */
-void dr_stop_midi(void)
+void dr_stop_midi()
 {
 	//   stop_midi();
 	char retstr[200];
@@ -123,7 +123,7 @@ void dr_stop_midi(void)
  * Returns the midi_pos variable
  * By Owen Rudge
  */
-long dr_midi_pos(void)
+sint32 dr_midi_pos()
 {
 	char retstr[200];
 	long length;
@@ -151,7 +151,7 @@ long dr_midi_pos(void)
  * Midi shutdown/cleanup
  * By Owen Rudge
  */
-void dr_destroy_midi(void)
+void dr_destroy_midi()
 {
 	__win32_set_midi_volume(__MIDI_VOL_WIN32, OldMIDIVol[0], OldMIDIVol[1]);
 	midi_number = -1;
@@ -162,7 +162,7 @@ void dr_destroy_midi(void)
  * MIDI initialisation routines
  * @author Owen Rudge
  */
-bool dr_init_midi(void)
+bool dr_init_midi()
 {
  #ifdef MIXER_VOLUME
 	UINT nMIDIDevices;
@@ -308,8 +308,8 @@ void __win32_set_midi_volume(int type, int left, int right)
 // Sets the MIDI volume - internal routine
 void __win32_set_midi_volume(int , int left, int right)
 {
-	// prissis short version
-	long vol = (left<<24)|(right<<8);
+	// prissi's short version
+	DWORD vol = (left<<24)|(right<<8);
 
 	if( midiOutGetNumDevs()== 0 ) {
 		return;

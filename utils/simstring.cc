@@ -26,7 +26,7 @@ char *ntos(long number, const char *format)
 	else {
 		r = sprintf(tempstring, "%ld", number);
 	}
-	assert(r<16);
+	assert(r<16);(void)r;
 
 	return tempstring;
 }
@@ -35,7 +35,7 @@ char *ntos(long number, const char *format)
 
 
 /**
- * Set thousand seperator, used in money_to_string and
+ * Set thousand separator, used in money_to_string and
  * number_to_string
  * @author Hj. Malthaner
  */
@@ -57,7 +57,7 @@ void set_thousand_sep_exponent(int new_thousand_sep_exponent)
 
 
 /**
- * Set fraction seperator, used in money_to_string and
+ * Set fraction separator, used in money_to_string and
  * number_to_string
  * @author Hj. Malthaner
  */
@@ -67,23 +67,23 @@ void set_fraction_sep(char c)
 }
 
 
-char get_fraction_sep(void)
+char get_fraction_sep()
 {
 	return fraction_sep;
 }
 
-const char *get_large_money_string(void)
+const char *get_large_money_string()
 {
 	return large_number_string;
 }
 
 
 /**
- * Set large money abreviator, used in money_to_string and
+ * Set large money abbreviation, used in money_to_string and
  * number_to_string
  * @author prissi
  */
-void set_large_amout(const char *s, const double v)
+void set_large_amount(const char *s, const double v)
 {
 	large_number_string = s;
 	large_number_factor = v;
@@ -287,6 +287,33 @@ const char * ltrim(const char *p)
 		p ++;
 	}
 	return p;
+}
+
+
+/**
+ * Trims a std::string by removing any beginning and ending space/tab characters.
+ * (Move to simstring?)
+ * @author  Max Kielland
+ *
+ * @retval std::string  The trimmed string.
+ */
+std::string trim(const std::string &str_)
+{
+	std::string str(str_);
+
+	// left trim
+	std::string::size_type pos = str.find_first_not_of(" \t");
+	if( pos && pos  !=  std::string::npos ) {
+		str = str.substr(pos);
+	}
+
+	// right trim
+	pos = str.find_last_not_of(" \t");
+	if( pos != str.length()-1 && pos  !=  std::string::npos ) {
+		str = str.erase(pos+1);
+	}
+
+	return str;
 }
 
 

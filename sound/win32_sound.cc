@@ -4,14 +4,15 @@
  * This file is part of the Simutrans project under the artistic license.
  */
 
+// define before all includes!
+#define UNICODE 1
+
 #include <stdio.h>
 
-#define UNICODE 1
 // windows.h defines min and max macros which we don't want
 #define NOMINMAX 1
 #include <windows.h>
-/*#include <dsound.h>
-#include <Amaudio.h>*/
+#include <mmsystem.h>
 
 #include "sound.h"
 
@@ -24,7 +25,7 @@ static int use_sound = 0;
 
 /* this list contains all the samples
  */
-static void *samples[64];
+static void *samples[1024];
 static int sample_number = 0;
 
 
@@ -46,7 +47,7 @@ bool dr_init_sound()
  */
 int dr_load_sample(char const* filename)
 {
-	if(use_sound  &&  sample_number>=0  &&  sample_number<64) {
+	if(use_sound  &&  sample_number>=0  &&  sample_number < 1024) {
 		if (FILE* const fIn = fopen(filename, "rb")) {
 			long len;
 			fseek( fIn, 0, SEEK_END );
@@ -77,6 +78,7 @@ void dr_play_sample(int sample_number, int volume)
 {
 	if(use_sound!=0  &&  sample_number>=0  &&  sample_number<64  &&  volume>1) {
 
+		// Too late: DirectSound is deprecated.
 		/* TODO: Use DirectSound to render the sound in Windows 32-bit
 		 * so as to enable better quality sound playback without 
 		 * interfering with system volume levels.
