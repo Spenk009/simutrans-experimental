@@ -8954,10 +8954,12 @@ DBG_MESSAGE("karte_t::load()", "%d factories loaded", fab_list.get_count());
 	// ... before removing dummy stops
 	for(  vector_tpl<halthandle_t>::const_iterator i=haltestelle_t::get_alle_haltestellen().begin(); i!=haltestelle_t::get_alle_haltestellen().end();  ) {
 		halthandle_t const h = *i;
-		++i;
 		if (!h->get_owner() || !h->existiert_in_welt()) {
 			// this stop was only needed for loading goods ...
 			haltestelle_t::destroy(h);	// remove from list
+		}
+		else {
+				++i;
 		}
 	}
 
@@ -10442,7 +10444,7 @@ void karte_t::announce_server(int status)
 			//buf.printf( "&rev=%d", atol( QUOTEME(REVISION) ) );
 			buf.printf("&rev=%d", strtol(QUOTEME(REVISION), NULL, 16));
 			// Complex version string used for display
-			buf.printf( "&ver=Simutrans %s (r%s) built %s", QUOTEME(VERSION_NUMBER), QUOTEME(REVISION), QUOTEME(VERSION_DATE) );
+			buf.printf( "&ver=Simutrans %s (#%s) built %s", QUOTEME(VERSION_NUMBER), QUOTEME(REVISION), QUOTEME(VERSION_DATE) );
 			// Pakset version
 			buf.append( "&pak=" );
 			// Announce pak set, ideally get this from the copyright field of ground.Outside.pak
