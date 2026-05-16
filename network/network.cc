@@ -993,8 +993,9 @@ bool prepare_for_server( char *externalIPAddress, char *externalAltIPAddress, in
 	if(  (devlist = upnpDiscover( 2000, multicastif, minissdpdpath, localport, ipv6, ttl, &error ))  ) {
 		struct UPNPUrls urls;
 		struct IGDdatas data;
+		char wanaddr[64];
 
-		UPNP_GetValidIGD( devlist, &urls, &data, lanaddr, sizeof(lanaddr) );
+		UPNP_GetValidIGD( devlist, &urls, &data, lanaddr, sizeof(lanaddr), wanaddr, sizeof(wanaddr) );
 		// we must know our IP address first
 		if(  UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, externalIPAddress) ==  UPNPCOMMAND_SUCCESS  ) {
 			// this is our ID (at least the routes tells us this)
@@ -1052,8 +1053,9 @@ void remove_port_forwarding( int port )
 	if(  (devlist = upnpDiscover( 2000, multicastif, minissdpdpath, localport, ipv6, ttl, &error ))  ) {
 		struct UPNPUrls urls;
 		struct IGDdatas data;
+		char wanaddr[64];
 
-		UPNP_GetValidIGD( devlist, &urls, &data, lanaddr, sizeof(lanaddr) );
+		UPNP_GetValidIGD( devlist, &urls, &data, lanaddr, sizeof(lanaddr), wanaddr, sizeof(wanaddr) );
 		// we must know our IP address first
 		if(  UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, externalIPAddress) ==  UPNPCOMMAND_SUCCESS  ) {
 			// this is our ID (at least the routes tells us this)
